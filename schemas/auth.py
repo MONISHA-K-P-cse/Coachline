@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
 
 class UserCreate(BaseModel):
@@ -7,6 +7,7 @@ class UserCreate(BaseModel):
     password: str
     full_name: Optional[str] = None
     target_role: Optional[str] = None
+    target_company: Optional[str] = None
     experience_level: Optional[str] = None
 
 class UserLogin(BaseModel):
@@ -19,6 +20,7 @@ class Token(BaseModel):
 
 class ProfileResponse(BaseModel):
     target_role: Optional[str] = None
+    target_company: Optional[str] = None
     experience_level: Optional[str] = None
     bio: Optional[str] = None
 

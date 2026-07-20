@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 
@@ -37,6 +36,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     profile = Profile(
         user_id=user.id,
         target_role=user_in.target_role or "Backend Engineer",
+        target_company=user_in.target_company or "Target Tech Company",
         experience_level=user_in.experience_level or "Intermediate",
     )
     db.add(profile)

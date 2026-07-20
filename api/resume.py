@@ -22,8 +22,10 @@ def load_mock_resume_score() -> dict:
         with open(MOCK_RESUME_PATH, "r") as f:
             return json.load(f)
     return {
-        "score": 80,
+        "score": 85,
+        "ats_score": 88,
         "summary": "Solid technical background.",
+        "resume_feedback": "Strong ATS formatting. Consider highlighting throughput metrics.",
         "strengths": ["API Design", "Database Modeling"],
         "improvements": ["Add deployment metrics"],
         "fallback_used": True
@@ -50,7 +52,7 @@ async def upload_resume(
                 text = page.extract_text()
                 if text:
                     extracted_text += text + "\n"
-    except Exception as e:
+    except Exception:
         extracted_text = f"Sample raw text extracted from {file.filename}."
 
     # Call P3 Resume Agent with resilience timeout
@@ -64,7 +66,6 @@ async def upload_resume(
             if resp.status_code == 200:
                 agent_score_data = resp.json()
     except Exception:
-        # Fallback to mock data gracefully - never hang request!
         agent_score_data = load_mock_resume_score()
 
     if not agent_score_data:
@@ -73,8 +74,10 @@ async def upload_resume(
     resume_entry = Resume(
         user_id=current_user.id,
         filename=file.filename,
-        parsed_text=extracted_text[:3000],  # store sample/preview
-        score=agent_score_data.get("score", 75),
+        parsed_text=extracted_text[:3000],
+        score=agent_score_data.get("score", 85),
+        ats_score=agent_score_data.get("ats_score", 88),
+        resume_feedback=agent_score_data.get("resume_feedback", "ATS layout looks clean. Add quantifiable metrics."),
         score_details=agent_score_data,
     )
 
@@ -86,6 +89,8 @@ async def upload_resume(
         id=resume_entry.id,
         filename=resume_entry.filename,
         score=resume_entry.score,
+        ats_score=resume_entry.ats_score,
+        resume_feedback=resume_entry.resume_feedback,
         parsed_text_preview=resume_entry.parsed_text[:200] if resume_entry.parsed_text else "",
         score_details=resume_entry.score_details,
         uploaded_at=resume_entry.uploaded_at

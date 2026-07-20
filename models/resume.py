@@ -11,6 +11,8 @@ class Resume(Base):
     filename = Column(String, nullable=False)
     parsed_text = Column(Text, nullable=True)
     score = Column(Integer, default=0)
+    ats_score = Column(Integer, default=0)
+    resume_feedback = Column(Text, nullable=True)
     score_details = Column(JSON, nullable=True)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
 

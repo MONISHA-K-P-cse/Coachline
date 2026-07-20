@@ -7,10 +7,12 @@ from core.database import engine, Base
 from api import (
     auth_router,
     resume_router,
+    jd_router,
     roadmap_router,
     notes_router,
     interview_router,
     dashboard_router,
+    mentor_router,
 )
 
 # Configure logging
@@ -36,13 +38,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include Routers
+# Include Routers for Orchestrator Agent Pipeline
 app.include_router(auth_router, prefix=settings.API_V1_STR)
 app.include_router(resume_router, prefix=settings.API_V1_STR)
+app.include_router(jd_router, prefix=settings.API_V1_STR)
 app.include_router(roadmap_router, prefix=settings.API_V1_STR)
 app.include_router(notes_router, prefix=settings.API_V1_STR)
 app.include_router(interview_router, prefix=settings.API_V1_STR)
 app.include_router(dashboard_router, prefix=settings.API_V1_STR)
+app.include_router(mentor_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def root():

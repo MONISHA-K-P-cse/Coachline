@@ -1,0 +1,15 @@
+{
+  "skill_gaps": [
+    {
+      "category": "Must-Have Technical Skills",
+      "missing_skills": ["Distributed Caching (Redis)", "Kafka Event Streaming"],
+      "priority": "High"
+    },
+    {
+      "category": "Architecture & Design",
+      "missing_skills": ["System Resilience Patterns (Circuit Breakers)"],
+      "priority": "Medium"
+    }
+  ],
+  "matched_skills": ["Python FastAPI", "SQLAlchemy", "Alembic Migrations", "RESTful APIs", "JWT Auth"]
+}

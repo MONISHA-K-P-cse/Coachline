@@ -14,10 +14,12 @@ class User(Base):
 
     profile = relationship("Profile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     resumes = relationship("Resume", back_populates="user", cascade="all, delete-orphan")
+    job_descriptions = relationship("JobDescription", back_populates="user", cascade="all, delete-orphan")
     roadmaps = relationship("Roadmap", back_populates="user", cascade="all, delete-orphan")
     notes = relationship("Note", back_populates="user", cascade="all, delete-orphan")
     interviews = relationship("InterviewSession", back_populates="user", cascade="all, delete-orphan")
     mastery_scores = relationship("TopicMastery", back_populates="user", cascade="all, delete-orphan")
+    mentor_messages = relationship("CareerMentorMessage", back_populates="user", cascade="all, delete-orphan")
 
 
 class Profile(Base):
@@ -26,6 +28,7 @@ class Profile(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
     target_role = Column(String, nullable=True)
+    target_company = Column(String, nullable=True)
     experience_level = Column(String, nullable=True)
     bio = Column(Text, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
