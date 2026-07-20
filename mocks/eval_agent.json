@@ -1,0 +1,6 @@
+{
+  "question": "Can you explain how connection pooling works in SQLAlchemy and why it is essential for high-concurrency APIs?",
+  "score": 7.5,
+  "feedback": "Good explanation of database connections reuse. To improve, mention how connection exhaustion causes timeouts under heavy load.",
+  "weak_topics": ["Database Connection Pooling", "Concurrency Control"]
+}

@@ -1,0 +1,15 @@
+{
+  "score": 85,
+  "summary": "Strong backend engineering profile with solid experience in Python, API design, and SQL databases.",
+  "strengths": [
+    "Clean REST API design",
+    "Database schema normalization and indexing",
+    "Experience with CI/CD and automated testing"
+  ],
+  "improvements": [
+    "Add metrics around system throughput and latency",
+    "Elaborate on microservice inter-service communication",
+    "Include certifications or cloud deployment project highlights"
+  ],
+  "fallback_used": true
+}

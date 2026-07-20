@@ -1,0 +1,33 @@
+{
+  "title": "Backend Engineering Masterclass Roadmap",
+  "steps": [
+    {
+      "step_number": 1,
+      "title": "Advanced Python & Async Frameworks",
+      "description": "Master FastAPI, Pydantic v2, and async SQLAlchemy 2.0 pattern.",
+      "estimated_hours": 15,
+      "status": "completed"
+    },
+    {
+      "step_number": 2,
+      "title": "Database Optimization & Alembic Migrations",
+      "description": "Learn query profiling, index optimization, and version-controlled migrations.",
+      "estimated_hours": 20,
+      "status": "in_progress"
+    },
+    {
+      "step_number": 3,
+      "title": "System Design & Microservices",
+      "description": "Design resilient event-driven architectures with RabbitMQ and Redis caching.",
+      "estimated_hours": 25,
+      "status": "pending"
+    },
+    {
+      "step_number": 4,
+      "title": "Deployment & Railway Infrastructure",
+      "description": "Containerize with Docker, configure environment secrets, and deploy to Railway.",
+      "estimated_hours": 10,
+      "status": "pending"
+    }
+  ]
+}
