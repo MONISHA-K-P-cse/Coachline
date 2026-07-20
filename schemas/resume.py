@@ -7,6 +7,7 @@ class ResumeResponse(BaseModel):
     filename: str
     score: int
     ats_score: int
+    keyword_count: int
     resume_feedback: Optional[str] = None
     parsed_text_preview: Optional[str] = None
     score_details: Optional[Dict[str, Any]] = None
@@ -18,6 +19,7 @@ class ResumeResponse(BaseModel):
 class ResumeScore(BaseModel):
     score: int
     ats_score: int
+    keyword_count: int
     summary: str
     resume_feedback: str
     strengths: List[str]

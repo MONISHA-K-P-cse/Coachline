@@ -7,6 +7,8 @@ class NoteCreate(BaseModel):
     topic: str
     title: str
     content: str
+    note_type: Optional[str] = "detailed_note"  # short_note, detailed_note, cheat_sheet, flashcard, mcq
+    category: Optional[str] = "System Design"
     is_bookmarked: bool = False
 
 class NoteResponse(BaseModel):
@@ -15,6 +17,8 @@ class NoteResponse(BaseModel):
     topic: str
     title: str
     content: str
+    note_type: str
+    category: str
     is_bookmarked: bool
     created_at: datetime
 
@@ -30,7 +34,7 @@ class RoadmapStep(BaseModel):
     title: str
     description: str
     estimated_hours: int
-    status: str = "pending"  # pending, in_progress, completed
+    status: str = "pending"
 
 class RoadmapResponse(BaseModel):
     id: int

@@ -30,6 +30,7 @@ class Profile(Base):
     target_role = Column(String, nullable=True)
     target_company = Column(String, nullable=True)
     experience_level = Column(String, nullable=True)
+    interview_date = Column(DateTime, nullable=True)
     bio = Column(Text, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

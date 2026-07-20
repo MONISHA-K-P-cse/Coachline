@@ -27,6 +27,8 @@ class Note(Base):
     topic = Column(String, nullable=False)
     title = Column(String, nullable=False)
     content = Column(Text, nullable=False)
+    note_type = Column(String, default="detailed_note")  # short_note, detailed_note, cheat_sheet, flashcard, mcq
+    category = Column(String, default="System Design")   # DSA, OS, DBMS, CN, OOP, System Design, HR, Behavioral
     is_bookmarked = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 

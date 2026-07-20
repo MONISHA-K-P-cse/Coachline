@@ -9,6 +9,7 @@ class UserCreate(BaseModel):
     target_role: Optional[str] = None
     target_company: Optional[str] = None
     experience_level: Optional[str] = None
+    interview_date: Optional[datetime] = None
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -22,6 +23,7 @@ class ProfileResponse(BaseModel):
     target_role: Optional[str] = None
     target_company: Optional[str] = None
     experience_level: Optional[str] = None
+    interview_date: Optional[datetime] = None
     bio: Optional[str] = None
 
     class Config:
