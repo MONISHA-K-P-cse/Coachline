@@ -40,7 +40,7 @@ The backend is explicitly designed around the core end-to-end user journey:
                  │
                  ▼
     ┌─────────────────────────┐
-    │     Updates Roadmap     │  ---> core/mastery.py feedback loop updates TopicMastery
+    │     Updates Roadmap     │  ---> backend/core/mastery.py feedback loop updates TopicMastery
     └────────────┬────────────┘       & generates targeted notes for weak topics
                  │
                  ▼
@@ -55,46 +55,60 @@ The backend is explicitly designed around the core end-to-end user journey:
 
 ```
 Coachline/
-├── main.py               # FastAPI entrypoint, CORS & docs
-├── requirements.txt      # Dependencies
-├── alembic.ini           # Alembic config
-├── alembic/              # Database migration scripts
-├── core/
-│   ├── config.py         # App settings & env variables
-│   ├── database.py       # SQLAlchemy engine & session setup
-│   ├── auth.py           # JWT auth & password hashing
-│   └── mastery.py        # Agentic feedback loop logic
-├── models/               # SQLAlchemy ORM models
-│   ├── user.py
-│   ├── resume.py
-│   ├── roadmap.py
-│   ├── interview.py
-│   └── mastery.py
-├── schemas/              # Pydantic request/response schemas
-├── api/                  # API Routers
-│   ├── auth.py
-│   ├── resume.py
-│   ├── roadmap.py
-│   ├── notes.py
-│   ├── interview.py
-│   └── dashboard.py
-├── mocks/                # P3 Agent resilient offline mocks
-└── test_backend.py       # Automated verification test suite
+├── backend/               # FastAPI service
+│   ├── main.py            # FastAPI entrypoint, CORS & docs
+│   ├── alembic.ini        # Alembic config
+│   ├── alembic/           # Database migration scripts
+│   ├── core/
+│   │   ├── config.py      # App settings & env variables
+│   │   ├── database.py    # SQLAlchemy engine & session setup
+│   │   ├── auth.py        # JWT auth & password hashing
+│   │   └── mastery.py     # Agentic feedback loop logic
+│   ├── models/            # SQLAlchemy ORM models
+│   │   ├── user.py
+│   │   ├── resume.py
+│   │   ├── roadmap.py
+│   │   ├── interview.py
+│   │   └── mastery.py
+│   ├── schemas/           # Pydantic request/response schemas
+│   └── api/                # API Routers
+│       ├── auth.py
+│       ├── resume.py
+│       ├── roadmap.py
+│       ├── notes.py
+│       ├── interview.py
+│       └── dashboard.py
+├── ai/                     # Agent pipeline & RAG stack
+│   ├── agents/             # Resume/Roadmap/Notes/Interview/Eval agents
+│   ├── graph/               # CoachlineOrchestrator
+│   └── rag/                 # ChromaDB retriever & doc ingestion
+├── frontend/               # React/Vite client
+├── mocks/                  # P3 Agent resilient offline mocks
+├── tests/                  # Mirrors ai/ for agent/graph/RAG tests
+│   └── ai/
+│       ├── agents/
+│       ├── graph/
+│       └── rag/
+├── test_backend.py         # Automated backend verification test suite
+├── conftest.py             # Pytest RAG-retriever stub for test collection
+└── pytest.ini
 ```
 
 ---
 
 ## 🛠️ Quick Start
 
+All commands are run from the repository root (`Coachline/`).
+
 ```bash
 # 1. Activate virtual environment
 source venv/bin/activate
 
 # 2. Run database migrations
-alembic upgrade head
+alembic -c backend/alembic.ini upgrade head
 
 # 3. Start Uvicorn development server
-uvicorn main.py:app --reload --port 8000
+uvicorn backend.main:app --reload --port 8000
 ```
 
 Access interactive API documentation at **`http://127.0.0.1:8000/docs`**.

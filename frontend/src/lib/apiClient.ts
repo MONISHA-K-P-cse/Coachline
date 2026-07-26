@@ -1,0 +1,304 @@
+// Thin fetch wrapper: attaches the JWT, reads the backend base URL from an
+// env var, and normalizes errors so callers can just `await` and `catch`.
+
+const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+
+let authToken: string | null = null
+
+export function setAuthToken(token: string | null) {
+  authToken = token
+}
+
+export class ApiError extends Error {
+  status: number
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
+  }
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> | undefined),
+  }
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json'
+  }
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`
+  }
+
+  const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers })
+
+  if (!res.ok) {
+    let detail = res.statusText
+    try {
+      const body = await res.json()
+      detail = body.detail || detail
+    } catch {
+      // response wasn't JSON - fall back to statusText
+    }
+    throw new ApiError(res.status, typeof detail === 'string' ? detail : JSON.stringify(detail))
+  }
+
+  if (res.status === 204) return undefined as T
+  return res.json() as Promise<T>
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
+export interface Profile {
+  target_role: string | null
+  target_company: string | null
+  experience_level: string | null
+  interview_date: string | null
+  bio: string | null
+  learning_style: string | null
+}
+
+export interface User {
+  id: number
+  email: string
+  full_name: string | null
+  created_at: string
+  profile: Profile | null
+}
+
+export function register(data: {
+  email: string
+  password: string
+  full_name?: string
+}): Promise<User> {
+  return request('/auth/register', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export function login(email: string, password: string): Promise<{ access_token: string; token_type: string }> {
+  return request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })
+}
+
+export function getMe(): Promise<User> {
+  return request('/auth/me')
+}
+
+export function updateProfile(data: Partial<{
+  target_role: string
+  target_company: string
+  experience_level: string
+  interview_date: string
+  bio: string
+  learning_style: string
+}>): Promise<User> {
+  return request('/auth/profile', { method: 'PATCH', body: JSON.stringify(data) })
+}
+
+// ─── Resume ──────────────────────────────────────────────────────────────────
+
+export interface ResumeResponse {
+  id: number
+  filename: string
+  score: number
+  ats_score: number
+  keyword_count: number
+  resume_feedback: string | null
+  parsed_text_preview: string | null
+  score_details: {
+    summary?: string
+    strengths?: string[]
+    improvements?: string[]
+    fallback_used?: boolean
+  } | null
+  uploaded_at: string
+}
+
+export function uploadResume(file: File): Promise<ResumeResponse> {
+  const form = new FormData()
+  form.append('file', file)
+  return request('/resume/upload', { method: 'POST', body: form })
+}
+
+export function listResumes(): Promise<ResumeResponse[]> {
+  return request('/resume/')
+}
+
+// ─── Roadmap ─────────────────────────────────────────────────────────────────
+
+export interface RoadmapStep {
+  step_number: number
+  title: string
+  description: string
+  estimated_hours: number
+  status: string
+}
+
+export interface RoadmapResponse {
+  id: number
+  title: string
+  target_role: string
+  steps_json: RoadmapStep[]
+  progress_percentage: number
+  created_at: string
+}
+
+export function generateRoadmap(target_role: string, title?: string): Promise<RoadmapResponse> {
+  return request('/roadmap/generate', { method: 'POST', body: JSON.stringify({ target_role, title }) })
+}
+
+export function listRoadmaps(): Promise<RoadmapResponse[]> {
+  return request('/roadmap/')
+}
+
+// ─── Notes ───────────────────────────────────────────────────────────────────
+
+export interface NoteBlock {
+  type: 'text' | 'diagram' | 'exercise'
+  content: string
+}
+
+export interface NoteResponse {
+  id: number
+  roadmap_id: number | null
+  topic: string
+  title: string
+  content: string
+  note_type: string
+  category: string
+  is_bookmarked: boolean
+  created_at: string
+}
+
+export function listNotes(bookmarkedOnly = false): Promise<NoteResponse[]> {
+  return request(`/notes/?bookmarked_only=${bookmarkedOnly}`)
+}
+
+export function generateNote(topic: string, roadmapId?: number): Promise<NoteResponse> {
+  const params = new URLSearchParams({ topic })
+  if (roadmapId) params.set('roadmap_id', String(roadmapId))
+  return request(`/notes/generate?${params.toString()}`, { method: 'POST' })
+}
+
+export function toggleBookmark(noteId: number): Promise<NoteResponse> {
+  return request(`/notes/${noteId}/bookmark`, { method: 'PATCH' })
+}
+
+// ─── Interview ───────────────────────────────────────────────────────────────
+
+export interface InterviewSession {
+  id: number
+  role: string
+  status: string
+  average_score: number
+  technical_score: number
+  communication_score: number
+  behavioral_score: number
+  confidence_score: number
+  star_score: number
+  started_at: string
+  ended_at: string | null
+}
+
+export function listInterviewSessions(): Promise<InterviewSession[]> {
+  return request('/interview/sessions')
+}
+
+export interface ReplayDiffAttempt {
+  session_id: number
+  turn_number: number
+  question: string
+  user_answer: string | null
+  score: number
+  feedback: string | null
+  created_at: string
+}
+
+export interface ReplayDiffResult {
+  topic: string
+  attempt_count: number
+  earliest: ReplayDiffAttempt
+  latest: ReplayDiffAttempt
+  score_delta: number | null
+}
+
+export function getReplayDiff(topic: string): Promise<ReplayDiffResult> {
+  return request(`/interview/replay-diff/${encodeURIComponent(topic)}`)
+}
+
+export function interviewWebSocketUrl(userId: number): string {
+  const wsBase = API_BASE_URL.replace(/^http/, 'ws').replace(/\/api$/, '')
+  return `${wsBase}/api/interview/ws/${userId}`
+}
+
+// ─── Dashboard ───────────────────────────────────────────────────────────────
+
+export interface InterviewScoreBreakdown {
+  overall_score: number
+  technical_score: number
+  communication_score: number
+  behavioral_score: number
+  confidence_score: number
+  star_score: number
+}
+
+export interface DashboardSummary {
+  user_id: number
+  full_name: string | null
+  target_role: string | null
+  target_company: string | null
+  interview_date: string | null
+  days_until_interview: number | null
+  panic_mode: boolean
+  overall_readiness_score: number
+  latest_resume_score: number
+  latest_ats_score: number
+  keyword_count: number
+  roadmap_progress_percentage: number
+  total_notes_count: number
+  bookmarked_notes_count: number
+  total_interviews_conducted: number
+  interview_scores: InterviewScoreBreakdown
+  weak_topics: string[]
+  recommendations: string[]
+}
+
+export function getDashboard(): Promise<DashboardSummary> {
+  return request('/dashboard/')
+}
+
+export interface ActivityHeatmapEntry {
+  date: string
+  interviews: number
+  notes: number
+  resumes: number
+  total: number
+}
+
+export function getActivityHeatmap(days = 90): Promise<{ days: ActivityHeatmapEntry[] }> {
+  return request(`/dashboard/activity-heatmap?days=${days}`)
+}
+
+export interface TopicMasteryEntry {
+  topic: string
+  mastery_score: number
+  needs_regeneration: boolean
+  updated_at: string
+}
+
+export function getTopicMastery(): Promise<TopicMasteryEntry[]> {
+  return request('/dashboard/topic-mastery')
+}
+
+// ─── Mentor ──────────────────────────────────────────────────────────────────
+
+export interface MentorMessage {
+  id: number
+  sender: 'user' | 'mentor'
+  message: string
+  created_at: string
+}
+
+export function sendMentorMessage(message: string): Promise<MentorMessage[]> {
+  return request('/mentor/chat', { method: 'POST', body: JSON.stringify({ message }) })
+}
+
+export function getMentorHistory(): Promise<MentorMessage[]> {
+  return request('/mentor/history')
+}

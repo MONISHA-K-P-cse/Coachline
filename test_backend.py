@@ -1,7 +1,7 @@
 import os
 from fastapi.testclient import TestClient
-from main import app
-from core.database import Base, engine
+from backend.main import app
+from backend.core.database import Base, engine
 
 # Reset DB for test run
 Base.metadata.drop_all(bind=engine)

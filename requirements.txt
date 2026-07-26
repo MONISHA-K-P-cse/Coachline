@@ -8,6 +8,10 @@ email-validator>=2.1.0
 pyjwt>=2.8.0
 passlib[bcrypt]>=1.7.4
 pdfplumber>=0.11.0
-httpx>=0.27.0
+httpx>=0.27.0,<0.28  # httpx 0.28 drops TestClient(app=...) support needed by starlette<0.37 (fastapi 0.110 pin)
 python-multipart>=0.0.9
 pytest>=8.0.0
+ollama>=0.3.0
+ibm-watsonx-ai>=1.1.0
+chromadb>=0.5.0
+sentence-transformers>=2.2.0
