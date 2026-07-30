@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-import httpx
+from starlette.concurrency import run_in_threadpool
 import json
 import os
 
@@ -11,7 +11,10 @@ from backend.models.user import User
 from backend.models.jd import JobDescription
 from backend.schemas.jd import JobDescriptionCreate, JobDescriptionResponse
 
+from ai.agents.jd_agent import JobDescriptionAgent
+
 router = APIRouter(prefix="/job-description", tags=["JD & Skill Gap Analysis"])
+jd_agent = JobDescriptionAgent()
 
 MOCK_JD_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "mocks", "jd_agent.json")
 
@@ -31,20 +34,13 @@ async def upload_job_description(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    analysis_data = None
     try:
-        async with httpx.AsyncClient(timeout=settings.AGENT_TIMEOUT_SECONDS) as client:
-            resp = await client.post(
-                f"{settings.P3_AGENT_BASE_URL}/agent/jd/analyze",
-                json={
-                    "target_role": jd_in.target_role,
-                    "company_name": jd_in.company_name,
-                    "jd_text": jd_in.jd_text,
-                    "user_id": current_user.id
-                }
-            )
-            if resp.status_code == 200:
-                analysis_data = resp.json()
+        analysis_data = await run_in_threadpool(
+            jd_agent.analyze_jd,
+            jd_in.target_role,
+            jd_in.company_name or "",
+            jd_in.jd_text
+        )
     except Exception:
         analysis_data = load_mock_jd_analysis()
 

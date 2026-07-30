@@ -1,4 +1,7 @@
 import os
+# Use a separate SQLite database for tests to prevent overwriting development data
+os.environ["DATABASE_URL"] = "sqlite:///./test_coachline.db"
+
 from fastapi.testclient import TestClient
 from backend.main import app
 from backend.core.database import Base, engine

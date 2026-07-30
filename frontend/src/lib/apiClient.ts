@@ -120,6 +120,45 @@ export function listResumes(): Promise<ResumeResponse[]> {
   return request('/resume/')
 }
 
+export interface ResumeImprovementResponse {
+  improved_text: string
+  changes_made: string[]
+}
+
+export function improveResume(resumeId: number): Promise<ResumeImprovementResponse> {
+  return request(`/resume/${resumeId}/improve`, { method: 'POST' })
+}
+
+export async function downloadImprovedPDF(text: string, filename: string): Promise<void> {
+  const url = `${API_BASE_URL}/resume/generate-pdf`
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`
+  }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ text, filename })
+  })
+
+  if (!res.ok) {
+    throw new Error('Failed to generate PDF')
+  }
+
+  const blob = await res.blob()
+  const downloadUrl = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = downloadUrl
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(downloadUrl)
+}
+
 // ─── Roadmap ─────────────────────────────────────────────────────────────────
 
 export interface RoadmapStep {
