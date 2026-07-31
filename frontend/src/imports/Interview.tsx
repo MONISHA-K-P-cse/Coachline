@@ -83,11 +83,84 @@ export default function Interview({ navigate }: Props) {
     }, ms)
   }
 
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const recognitionRef = useRef<any>(null)
+
   useEffect(() => () => {
     clearWaitTimer()
     expectedCloseRef.current = true
     wsRef.current?.close()
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+    }
+    recognitionRef.current?.stop()
   }, [])
+
+  const speakQuestion = () => {
+    if ('speechSynthesis' in window) {
+      if (isSpeaking) {
+        window.speechSynthesis.cancel()
+        setIsSpeaking(false)
+      } else {
+        window.speechSynthesis.cancel()
+        const cleanText = question.replace(/[*#_`]/g, '')
+        const utterance = new SpeechSynthesisUtterance(cleanText)
+        utterance.onend = () => setIsSpeaking(false)
+        utterance.onerror = () => setIsSpeaking(false)
+        setIsSpeaking(true)
+        window.speechSynthesis.speak(utterance)
+      }
+    } else {
+      alert("Text-to-Speech is not supported in this browser.")
+    }
+  }
+
+  const toggleRecording = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      alert("Speech Recognition is not supported in this browser. Please use a browser like Chrome, Safari or Edge.")
+      return
+    }
+
+    if (isRecording) {
+      recognitionRef.current?.stop()
+      setIsRecording(false)
+    } else {
+      const rec = new SpeechRecognition()
+      rec.continuous = true
+      rec.interimResults = true
+      rec.lang = 'en-US'
+
+      rec.onstart = () => {
+        setIsRecording(true)
+      }
+
+      rec.onresult = (event: any) => {
+        let finalTrans = ''
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTrans += event.results[i][0].transcript
+          }
+        }
+        if (finalTrans) {
+          setAnswer((prev) => prev + (prev.endsWith(' ') || prev === '' ? '' : ' ') + finalTrans)
+        }
+      }
+
+      rec.onerror = (e: any) => {
+        console.error("Speech recognition error", e)
+        setIsRecording(false)
+      }
+
+      rec.onend = () => {
+        setIsRecording(false)
+      }
+
+      recognitionRef.current = rec
+      rec.start()
+    }
+  }
 
   const connectAndStart = () => {
     if (!user) return
@@ -110,16 +183,28 @@ export default function Interview({ navigate }: Props) {
       clearWaitTimer()
       const data = JSON.parse(evt.data)
       if (data.event === 'question') {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel()
+          setIsSpeaking(false)
+        }
         setQuestion(data.question)
         setMode(data.mode ?? 'standard')
         setTurnNumber(data.turn_number)
         setStage('answering')
         setTimeout(() => textareaRef.current?.focus(), 100)
       } else if (data.event === 'eval_and_next') {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel()
+          setIsSpeaking(false)
+        }
         setFeedback(data as EvalPayload)
         setStage('feedback')
       } else if (data.event === 'ended') {
         expectedCloseRef.current = true
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel()
+          setIsSpeaking(false)
+        }
         setEnded({ average_score: data.average_score, scores_breakdown: data.scores_breakdown })
         setStage('ended')
       } else if (data.event === 'error') {
@@ -145,6 +230,10 @@ export default function Interview({ navigate }: Props) {
 
   const handleSubmit = () => {
     if (!answer.trim() || !wsRef.current) return
+    if (isRecording) {
+      recognitionRef.current?.stop()
+      setIsRecording(false)
+    }
     wsRef.current.send(JSON.stringify({ event: 'answer', user_answer: answer }))
     setStage('evaluating')
     armWaitTimer(
@@ -155,6 +244,10 @@ export default function Interview({ navigate }: Props) {
 
   const handleNext = () => {
     if (!feedback) return
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+      setIsSpeaking(false)
+    }
     setQuestion(feedback.next_question)
     setMode(feedback.mode)
     setAnswer('')
@@ -164,6 +257,10 @@ export default function Interview({ navigate }: Props) {
   }
 
   const handleEnd = () => {
+    if (isRecording) {
+      recognitionRef.current?.stop()
+      setIsRecording(false)
+    }
     wsRef.current?.send(JSON.stringify({ event: 'end' }))
     armWaitTimer(CONNECT_TIMEOUT_MS, 'The interview server did not confirm the session ended. Please try again.')
   }
@@ -237,12 +334,30 @@ export default function Interview({ navigate }: Props) {
         {(stage === 'answering' || stage === 'evaluating') && (
           <>
             <div style={{ background: '#FFFFFF', borderRadius: 20, border: '1.5px solid rgba(181,80,46,0.12)', padding: 32, marginBottom: 20, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-                {mode === 'devils_advocate' && (
-                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: '#FAFAF8', background: 'linear-gradient(135deg, #1C1917, #3D2419)', padding: '3px 10px', borderRadius: 100 }}>
-                    Devil's Advocate
-                  </span>
-                )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  {mode === 'devils_advocate' && (
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: '#FAFAF8', background: 'linear-gradient(135deg, #1C1917, #3D2419)', padding: '3px 10px', borderRadius: 100 }}>
+                      Devil's Advocate
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={speakQuestion}
+                  style={{ background: 'rgba(181,80,46,0.08)', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontSize: 12, fontWeight: 600, color: '#B5502E', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                >
+                  {isSpeaking ? (
+                    <>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                      Stop
+                    </>
+                  ) : (
+                    <>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                      Read Aloud
+                    </>
+                  )}
+                </button>
               </div>
               <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 18, fontWeight: 400, color: '#1C1917', lineHeight: 1.65, margin: 0, fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>
                 {question}
@@ -251,6 +366,13 @@ export default function Interview({ navigate }: Props) {
 
             {stage === 'answering' ? (
               <div>
+                <style>{`
+                  @keyframes voice-pulse {
+                    0% { transform: scale(1); opacity: 1; }
+                    50% { transform: scale(1.05); opacity: 0.8; }
+                    100% { transform: scale(1); opacity: 1; }
+                  }
+                `}</style>
                 <textarea
                   ref={textareaRef}
                   value={answer}
@@ -259,9 +381,36 @@ export default function Interview({ navigate }: Props) {
                   style={{ width: '100%', minHeight: 200, padding: '18px 20px', borderRadius: 14, border: '1.5px solid rgba(181,80,46,0.25)', background: '#FFFFFF', fontSize: 15, color: '#1C1917', lineHeight: 1.65, fontFamily: "'Plus Jakarta Sans', sans-serif", resize: 'vertical', outline: 'none', boxSizing: 'border-box' }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
-                  <button onClick={handleEnd} style={{ background: 'none', border: '1.5px solid rgba(181,80,46,0.25)', borderRadius: 100, cursor: 'pointer', padding: '11px 20px', fontSize: 13, fontWeight: 600, color: '#7A6B63', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                    End Session
-                  </button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={handleEnd} style={{ background: 'none', border: '1.5px solid rgba(181,80,46,0.25)', borderRadius: 100, cursor: 'pointer', padding: '11px 20px', fontSize: 13, fontWeight: 600, color: '#7A6B63', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                      End Session
+                    </button>
+                    <button
+                      onClick={toggleRecording}
+                      style={{
+                        background: isRecording ? '#dc2626' : 'none',
+                        border: isRecording ? '1.5px solid #dc2626' : '1.5px solid rgba(181,80,46,0.25)',
+                        borderRadius: 100,
+                        cursor: 'pointer',
+                        padding: '11px 20px',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: isRecording ? '#FAFAF8' : '#B5502E',
+                        fontFamily: "'Plus Jakarta Sans', sans-serif",
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        transition: 'all 0.2s ease',
+                        animation: isRecording ? 'voice-pulse 1.5s infinite ease-in-out' : 'none'
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                        <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v4M8 23h8"/>
+                      </svg>
+                      {isRecording ? 'Recording...' : 'Answer with Voice'}
+                    </button>
+                  </div>
                   <button
                     onClick={handleSubmit}
                     disabled={!answer.trim()}

@@ -13,10 +13,11 @@ interface SkillNode { id: string; label: string; x: number; y: number; strength:
 
 function layoutSkillNodes(strengths: string[], improvements: string[]): SkillNode[] {
   const nodes: SkillNode[] = [{ id: 'resume', label: 'Resume', x: 150, y: 110, strength: 0.9 }]
-  const ringAngles = (count: number) => Array.from({ length: count }, (_, i) => (i / Math.max(count, 1)) * Math.PI * 2)
 
-  strengths.slice(0, 4).forEach((s, i, arr) => {
-    const angle = ringAngles(arr.length)[i] - Math.PI / 2
+  const sCount = Math.min(strengths.length, 4)
+  strengths.slice(0, 4).forEach((s, i) => {
+    // Distribute evenly in the upper hemisphere: -180 to 0 degrees
+    const angle = -Math.PI + ((i + 1) * Math.PI) / (sCount + 1)
     nodes.push({
       id: `s-${i}`,
       label: s.length > 22 ? s.slice(0, 20) + '…' : s,
@@ -25,8 +26,11 @@ function layoutSkillNodes(strengths: string[], improvements: string[]): SkillNod
       strength: 0.75,
     })
   })
-  improvements.slice(0, 3).forEach((s, i, arr) => {
-    const angle = ringAngles(arr.length)[i] + Math.PI / 2
+
+  const mCount = Math.min(improvements.length, 3)
+  improvements.slice(0, 3).forEach((s, i) => {
+    // Distribute evenly in the lower hemisphere: 0 to 180 degrees
+    const angle = ((i + 1) * Math.PI) / (mCount + 1)
     nodes.push({
       id: `m-${i}`,
       label: s.length > 22 ? s.slice(0, 20) + '…' : s,
@@ -110,6 +114,11 @@ export default function Workspace({ navigate }: Props) {
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [resumeView, setResumeView] = useState<'scores' | 'network'>('scores')
 
+  const [improving, setImproving] = useState(false)
+  const [showImproveModal, setShowImproveModal] = useState(false)
+  const [improvedResume, setImprovedResume] = useState<api.ResumeImprovementResponse | null>(null)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
+
   const loadAll = useCallback(async () => {
     const [d, r, s, tm] = await Promise.all([
       api.getDashboard(),
@@ -128,6 +137,37 @@ export default function Workspace({ navigate }: Props) {
   }, [loadAll])
 
   const latestResume = resumes[0]
+
+  const handleImproveResume = async () => {
+    if (!latestResume) return
+    setImproving(true)
+    try {
+      const res = await api.improveResume(latestResume.id)
+      setImprovedResume(res)
+      setShowImproveModal(true)
+    } catch (err) {
+      console.error(err)
+      alert("Failed to optimize resume. Please try again.")
+    } finally {
+      setImproving(false)
+    }
+  }
+
+  const handleDownloadPDF = async () => {
+    if (!improvedResume) return
+    setDownloadingPdf(true)
+    try {
+      await api.downloadImprovedPDF(
+        improvedResume.improved_text,
+        `optimized_resume_${latestResume?.id || 'doc'}.pdf`
+      )
+    } catch (err) {
+      console.error(err)
+      alert("Failed to download PDF. Please try again.")
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -160,7 +200,7 @@ export default function Workspace({ navigate }: Props) {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#FAFAF8', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
       <Nav page="workspace" navigate={navigate} />
-      <input ref={fileInputRef} type="file" accept=".pdf" onChange={handleFileSelected} style={{ display: 'none' }} />
+      <input ref={fileInputRef} type="file" accept=".pdf,.docx" onChange={handleFileSelected} style={{ display: 'none' }} />
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px clamp(16px, 4vw, 48px)' }}>
         {/* Header */}
@@ -295,6 +335,31 @@ export default function Workspace({ navigate }: Props) {
                       </div>
                     </div>
                   )}
+
+                  <button
+                    onClick={handleImproveResume}
+                    disabled={improving}
+                    style={{
+                      marginTop: 20,
+                      width: '100%',
+                      background: 'rgba(181,80,46,0.06)',
+                      border: '1.5px dashed #B5502E',
+                      cursor: improving ? 'not-allowed' : 'pointer',
+                      color: '#B5502E',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      padding: '11px 0',
+                      borderRadius: 10,
+                      fontFamily: "'Plus Jakarta Sans', sans-serif",
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    ✨ {improving ? 'Optimizing Resume...' : 'Improve Resume with AI'}
+                  </button>
                 </div>
               ) : (
                 <div>
@@ -374,6 +439,160 @@ export default function Workspace({ navigate }: Props) {
           </div>
         </div>
       </div>
+      {showImproveModal && improvedResume && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: 'rgba(28,25,23,0.5)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: 24,
+          boxSizing: 'border-box'
+        }}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: 20,
+            border: '1.5px solid rgba(181,80,46,0.16)',
+            width: '100%',
+            maxWidth: 860,
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.12)',
+            overflow: 'hidden'
+          }}>
+            <div style={{ padding: 24, borderBottom: '1px solid rgba(181,80,46,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 20, fontWeight: 700, color: '#1C1917', margin: 0 }}>
+                  Optimized Resume Suggestions
+                </h2>
+                <p style={{ fontSize: 12, color: '#7A6B63', margin: '4px 0 0' }}>
+                  AI-improved version incorporating feedback to maximize ATS and technical readiness.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowImproveModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#7A6B63' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ background: 'rgba(181,80,46,0.05)', borderRadius: 12, padding: 18, border: '1px solid rgba(181,80,46,0.10)' }}>
+                <h4 style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B5502E', margin: '0 0 10px' }}>
+                  Key Optimizations Applied
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: '#4B3D37', lineHeight: 1.6 }}>
+                  {improvedResume.changes_made.map((change, i) => (
+                    <li key={i}>{change}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <div>
+                  <h4 style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7A6B63', margin: '0 0 8px' }}>
+                    Original Text Preview
+                  </h4>
+                  <div style={{
+                    border: '1.5px solid rgba(181,80,46,0.08)',
+                    borderRadius: 12,
+                    padding: 16,
+                    height: 280,
+                    overflowY: 'auto',
+                    fontSize: 12.5,
+                    color: '#7A6B63',
+                    lineHeight: 1.6,
+                    whiteSpace: 'pre-wrap',
+                    background: '#FAFAF8'
+                  }}>
+                    {latestResume?.parsed_text_preview || 'Original text not available.'}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#15803d', margin: '0 0 8px' }}>
+                    Improved Content
+                  </h4>
+                  <div style={{
+                    border: '1.5px solid rgba(21,128,61,0.15)',
+                    borderRadius: 12,
+                    padding: 16,
+                    height: 280,
+                    overflowY: 'auto',
+                    fontSize: 12.5,
+                    color: '#1C1917',
+                    lineHeight: 1.6,
+                    whiteSpace: 'pre-wrap',
+                    background: 'rgba(21,128,61,0.02)'
+                  }}>
+                    {improvedResume.improved_text}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: 20, borderTop: '1px solid rgba(181,80,46,0.08)', display: 'flex', justifyContent: 'flex-end', gap: 12, background: '#FAFAF8' }}>
+              <button
+                onClick={() => setShowImproveModal(false)}
+                style={{
+                  background: 'none',
+                  border: '1.5px solid rgba(181,80,46,0.20)',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  padding: '9px 18px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#7A6B63'
+                }}
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(improvedResume.improved_text)
+                  alert('Copied improved text to clipboard!')
+                }}
+                style={{
+                  background: 'none',
+                  border: '1.5px solid rgba(181,80,46,0.25)',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  padding: '9px 18px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#B5502E'
+                }}
+              >
+                Copy Text
+              </button>
+              <button
+                onClick={handleDownloadPDF}
+                disabled={downloadingPdf}
+                style={{
+                  background: 'linear-gradient(135deg, #B5502E, #C97350)',
+                  border: 'none',
+                  borderRadius: 8,
+                  cursor: downloadingPdf ? 'not-allowed' : 'pointer',
+                  padding: '9px 20px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: '#FAFAF8'
+                }}
+              >
+                {downloadingPdf ? 'Generating PDF...' : 'Download PDF'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
