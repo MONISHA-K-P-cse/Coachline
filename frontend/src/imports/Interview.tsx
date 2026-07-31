@@ -9,6 +9,16 @@ interface Props { navigate: (p: Page) => void }
 
 type Stage = 'ready' | 'connecting' | 'answering' | 'evaluating' | 'feedback' | 'ended' | 'error'
 
+// A single "answer" turn makes two sequential model calls before
+// responding (eval, then next question) - weak-topic note regeneration now
+// runs *after* the response is sent, so it no longer inflates this wait.
+// Each call has its own ~240s backend timeout, so the client-side
+// "something's actually wrong" threshold sits comfortably above both
+// calls' worst case, not just one. The initial connect has no model call
+// at all, so it gets a much shorter budget.
+const CONNECT_TIMEOUT_MS = 15_000
+const RESPONSE_TIMEOUT_MS = 520_000
+
 interface EvalPayload {
   previous_score: number
   scores_breakdown: { technical: number; communication: number; behavioral: number; confidence: number; star_method: number }
@@ -32,23 +42,72 @@ export default function Interview({ navigate }: Props) {
   const [feedback, setFeedback] = useState<EvalPayload | null>(null)
   const [ended, setEnded] = useState<{ average_score: number; scores_breakdown: EvalPayload['scores_breakdown'] } | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [slowWait, setSlowWait] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
+  const waitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Distinguishes a close we triggered ourselves (timeout bail-out, end of
+  // session) from one the server/network initiated, so onclose only shows
+  // an error for the latter.
+  const expectedCloseRef = useRef(false)
 
-  useEffect(() => () => wsRef.current?.close(), [])
+  const clearWaitTimer = () => {
+    if (waitTimerRef.current) {
+      clearTimeout(waitTimerRef.current)
+      waitTimerRef.current = null
+    }
+    if (slowTimerRef.current) {
+      clearTimeout(slowTimerRef.current)
+      slowTimerRef.current = null
+    }
+    setSlowWait(false)
+  }
+
+  // Arms a "give up and let the user retry" timer for whatever we're
+  // currently waiting on the socket for. Any real response clears it via
+  // clearWaitTimer(); if it fires first, the connection is presumed stuck
+  // and we surface a visible error instead of spinning forever. A shorter
+  // "still working" nudge fires first so a merely-slow (not stuck) call
+  // doesn't look identical to a hang while it's still in flight.
+  const armWaitTimer = (ms: number, message: string) => {
+    clearWaitTimer()
+    if (ms > 20_000) {
+      slowTimerRef.current = setTimeout(() => setSlowWait(true), 20_000)
+    }
+    waitTimerRef.current = setTimeout(() => {
+      expectedCloseRef.current = true
+      wsRef.current?.close()
+      setErrorMsg(message)
+      setStage('error')
+    }, ms)
+  }
+
+  useEffect(() => () => {
+    clearWaitTimer()
+    expectedCloseRef.current = true
+    wsRef.current?.close()
+  }, [])
 
   const connectAndStart = () => {
     if (!user) return
     setStage('connecting')
     setErrorMsg(null)
+    expectedCloseRef.current = false
     const ws = new WebSocket(interviewWebSocketUrl(user.id))
     wsRef.current = ws
 
+    armWaitTimer(CONNECT_TIMEOUT_MS, 'Could not connect to the interview server. Please try again.')
+
     ws.onopen = () => {
       ws.send(JSON.stringify({ event: 'start', role }))
+      // First question has no model call behind it, so the same short
+      // connect budget applies to it too.
+      armWaitTimer(CONNECT_TIMEOUT_MS, 'The interview server accepted the connection but never sent a question. Please try again.')
     }
 
     ws.onmessage = (evt) => {
+      clearWaitTimer()
       const data = JSON.parse(evt.data)
       if (data.event === 'question') {
         setQuestion(data.question)
@@ -60,6 +119,7 @@ export default function Interview({ navigate }: Props) {
         setFeedback(data as EvalPayload)
         setStage('feedback')
       } else if (data.event === 'ended') {
+        expectedCloseRef.current = true
         setEnded({ average_score: data.average_score, scores_breakdown: data.scores_breakdown })
         setStage('ended')
       } else if (data.event === 'error') {
@@ -69,8 +129,17 @@ export default function Interview({ navigate }: Props) {
     }
 
     ws.onerror = () => {
+      clearWaitTimer()
       setErrorMsg('Lost connection to the interview server.')
       setStage('error')
+    }
+
+    ws.onclose = () => {
+      clearWaitTimer()
+      if (!expectedCloseRef.current) {
+        setErrorMsg('The connection to the interview server closed unexpectedly. Please try again.')
+        setStage('error')
+      }
     }
   }
 
@@ -78,6 +147,10 @@ export default function Interview({ navigate }: Props) {
     if (!answer.trim() || !wsRef.current) return
     wsRef.current.send(JSON.stringify({ event: 'answer', user_answer: answer }))
     setStage('evaluating')
+    armWaitTimer(
+      RESPONSE_TIMEOUT_MS,
+      "This is taking much longer than expected - the AI evaluator may be stuck. Please try again."
+    )
   }
 
   const handleNext = () => {
@@ -92,6 +165,16 @@ export default function Interview({ navigate }: Props) {
 
   const handleEnd = () => {
     wsRef.current?.send(JSON.stringify({ event: 'end' }))
+    armWaitTimer(CONNECT_TIMEOUT_MS, 'The interview server did not confirm the session ended. Please try again.')
+  }
+
+  const resetToReady = () => {
+    clearWaitTimer()
+    expectedCloseRef.current = true
+    wsRef.current?.close()
+    wsRef.current = null
+    setErrorMsg(null)
+    setStage('ready')
   }
 
   return (
@@ -145,7 +228,7 @@ export default function Interview({ navigate }: Props) {
         {stage === 'error' && (
           <div style={{ background: 'rgba(181,80,46,0.06)', border: '1.5px solid rgba(181,80,46,0.20)', borderRadius: 16, padding: 24, textAlign: 'center' }}>
             <p style={{ color: '#B5502E', fontSize: 14, marginBottom: 16 }}>{errorMsg}</p>
-            <button onClick={() => setStage('ready')} style={{ background: 'none', border: '1.5px solid rgba(181,80,46,0.30)', borderRadius: 100, cursor: 'pointer', padding: '10px 20px', fontSize: 13, fontWeight: 600, color: '#B5502E' }}>
+            <button onClick={resetToReady} style={{ background: 'none', border: '1.5px solid rgba(181,80,46,0.30)', borderRadius: 100, cursor: 'pointer', padding: '10px 20px', fontSize: 13, fontWeight: 600, color: '#B5502E' }}>
               Try again
             </button>
           </div>
@@ -189,7 +272,14 @@ export default function Interview({ navigate }: Props) {
                 </div>
               </div>
             ) : (
-              <OrbitLoader label="Evaluating your answer…" size={72} />
+              <div>
+                <OrbitLoader label="Evaluating your answer…" size={72} />
+                {slowWait && (
+                  <p style={{ textAlign: 'center', fontSize: 12.5, color: '#7A6B63', marginTop: -8 }}>
+                    Still working - real model evaluation can take a couple of minutes.
+                  </p>
+                )}
+              </div>
             )}
           </>
         )}

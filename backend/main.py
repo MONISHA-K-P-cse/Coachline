@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.concurrency import run_in_threadpool
 import logging
+import time
 
 from backend.core.config import settings
 from backend.core.database import engine, Base
@@ -47,6 +49,27 @@ app.include_router(notes_router, prefix=settings.API_V1_STR)
 app.include_router(interview_router, prefix=settings.API_V1_STR)
 app.include_router(dashboard_router, prefix=settings.API_V1_STR)
 app.include_router(mentor_router, prefix=settings.API_V1_STR)
+
+
+@app.on_event("startup")
+async def warm_up_granite_model():
+    """
+    Fires one throwaway generation at boot so the Granite model is already
+    loaded into memory before the first real user request - Ollama unloads
+    an idle model after its keep_alive window, and loading a multi-GB model
+    from disk is itself a multi-second-to-multi-minute cost that would
+    otherwise land on whichever request happens to be first.
+    """
+    from ai.agents.granite_client import GraniteClient
+
+    logger.info("Warming up Granite model...")
+    t0 = time.time()
+    try:
+        await run_in_threadpool(GraniteClient().generate, "Reply with the single word: ready")
+        logger.info("Granite model warm-up finished in %.1fs", time.time() - t0)
+    except Exception as exc:
+        logger.warning("Granite model warm-up failed after %.1fs (%s); first real request will pay the cold-start cost.", time.time() - t0, exc)
+
 
 @app.get("/")
 def root():

@@ -324,13 +324,13 @@ export default function Landing({ navigate }: LandingProps) {
       <section
         style={{
           position: 'relative',
-          height: '100svh',
-          minHeight: 680,
+          minHeight: '100svh',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'flex-end',
+          paddingTop: 'clamp(96px, 16vh, 160px)',
           paddingBottom: '9vh',
         }}
       >
@@ -363,15 +363,19 @@ export default function Landing({ navigate }: LandingProps) {
           }}
         />
 
-        {/* 3D Carousel */}
+        {/* 3D Carousel — kept in normal document flow (not absolutely
+            positioned) so it reserves real space in the hero's flex column
+            and the headline below it can never overlap it, regardless of
+            viewport height. Height is sized generously above the tallest
+            card's rendered content (~230px) plus its float-animation
+            travel (±9px) so nothing clips. */}
         <div
           aria-label="Coachline features"
           style={{
-            position: 'absolute',
-            top: '10%',
-            left: 0,
-            right: 0,
+            position: 'relative',
+            width: '100%',
             height: 300,
+            flexShrink: 0,
             zIndex: 2,
             perspective: '1200px',
             perspectiveOrigin: '50% 60%',
@@ -392,16 +396,17 @@ export default function Landing({ navigate }: LandingProps) {
           </div>
         </div>
 
-        {/* Carousel indicator dots */}
+        {/* Carousel indicator dots — normal flow, directly below the
+            carousel so spacing to the headline below stays consistent. */}
         <div
           style={{
-            position: 'absolute',
-            bottom: '22%',
-            left: '50%',
-            transform: 'translateX(-50%)',
+            position: 'relative',
             display: 'flex',
             gap: 6,
             zIndex: 3,
+            marginTop: 16,
+            marginBottom: 32,
+            flexShrink: 0,
           }}
         >
           {FEATURES.map((_, i) => (

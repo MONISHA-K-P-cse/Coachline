@@ -16,6 +16,11 @@ class ResumeResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class RewriteSuggestion(BaseModel):
+    original: str
+    rewritten: str
+    reason: str
+
 class ResumeScore(BaseModel):
     score: int
     ats_score: int
@@ -24,4 +29,5 @@ class ResumeScore(BaseModel):
     resume_feedback: str
     strengths: List[str]
     improvements: List[str]
+    rewrite_suggestions: List[RewriteSuggestion] = []
     fallback_used: bool = False

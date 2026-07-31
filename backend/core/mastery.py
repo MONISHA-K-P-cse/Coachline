@@ -59,8 +59,9 @@ def enqueue_note_regeneration(db: Session, user_id: int, topic: str) -> Note:
 
     profile = db.query(Profile).filter(Profile.user_id == user_id).first()
     learning_style = (profile.learning_style if profile and profile.learning_style else DEFAULT_LEARNING_STYLE)
+    target_role = profile.target_role if profile and profile.target_role else ""
 
-    generated = NotesAgent().generate_notes(topic, learning_style=learning_style)
+    generated = NotesAgent().generate_notes(topic, learning_style=learning_style, target_role=target_role)
     auto_content = json.dumps(generated["blocks"])
 
     existing_note = db.query(Note).filter(

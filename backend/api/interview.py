@@ -10,7 +10,8 @@ from backend.core.database import SessionLocal, get_db
 from backend.core.auth import get_current_user
 from backend.core.mastery import update_topic_mastery
 from backend.models.interview import InterviewSession, QuestionAnswer
-from backend.models.user import User
+from backend.models.resume import Resume
+from backend.models.user import User, Profile
 from backend.schemas.interview import (
     InterviewSessionResponse,
     ReplayDiffResponse,
@@ -29,6 +30,27 @@ DEVILS_ADVOCATE_SCORE_THRESHOLD = 80.0
 
 eval_agent = EvaluationAgent()
 interview_agent = InterviewAgent()
+
+
+def _candidate_background(db: Session, user_id: int) -> str:
+    """Brief resume-derived context used to seed real question generation,
+    so the opening question can reference the candidate's actual skills
+    instead of being generic."""
+    resume = (
+        db.query(Resume)
+        .filter(Resume.user_id == user_id)
+        .order_by(Resume.uploaded_at.desc())
+        .first()
+    )
+    if not resume or not resume.score_details:
+        return ""
+    details = resume.score_details
+    parts = []
+    if details.get("summary"):
+        parts.append(details["summary"])
+    if details.get("strengths"):
+        parts.append("Strengths: " + ", ".join(details["strengths"]))
+    return "\n".join(parts)
 
 
 def _placeholder_eval() -> dict:
@@ -53,6 +75,8 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
     db: Session = SessionLocal()
     session = None
     turn_number = 1
+    experience_level = ""
+    candidate_background = ""
 
     try:
         while True:
@@ -62,6 +86,10 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
 
             if event == "start":
                 role = data.get("role", "Backend Engineer")
+                profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+                experience_level = profile.experience_level if profile and profile.experience_level else ""
+                candidate_background = _candidate_background(db, user_id)
+
                 session = InterviewSession(
                     user_id=user_id,
                     role=role,
@@ -72,7 +100,21 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                 db.commit()
                 db.refresh(session)
 
-                initial_q = f"Welcome to your {role} mock interview! To begin, please introduce yourself and your experience with REST APIs and database design."
+                # Real agent call for the opening question too - role,
+                # experience level, and (if available) the candidate's own
+                # resume background all shape it, instead of a fixed
+                # "REST APIs and database design" template with only the
+                # role name spliced in.
+                try:
+                    opening = await run_in_threadpool(
+                        interview_agent.generate_question,
+                        role, 0, experience_level, candidate_background, True,
+                    )
+                    initial_q = opening["question"]
+                except Exception as exc:
+                    logger.warning("Interview agent opening question failed (%s); using placeholder question.", exc)
+                    initial_q = f"Welcome to your {role} mock interview! To begin, please introduce yourself and your relevant experience for this role."
+
                 qa = QuestionAnswer(
                     session_id=session.id,
                     turn_number=turn_number,
@@ -106,18 +148,48 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
 
                 question_text = current_qa.question if current_qa else ""
 
-                # Real Evaluation Agent call (Granite LLM). EvaluationAgent
-                # already has its own internal fallback (fallback_used=True,
-                # score=50) if the model output can't be parsed as structured
-                # JSON - this try/except only covers the LLM call itself
-                # failing to run at all.
+                # Combined call: scores the answer AND produces the next
+                # question in a single Granite round-trip, instead of two
+                # sequential calls (eval, then next-question). Halves the
+                # "evaluating..." wait on CPU-only inference. Falls back to
+                # the previous two-call path if the combined output can't be
+                # parsed, so a single bad generation can't cost reliability.
                 try:
-                    eval_result = await run_in_threadpool(
-                        eval_agent.evaluate_answer, question_text, user_answer
+                    eval_result, next_q = await run_in_threadpool(
+                        interview_agent.evaluate_and_generate_next,
+                        session.role, question_text, user_answer, experience_level, candidate_background,
                     )
                 except Exception as exc:
-                    logger.warning("Eval agent call failed (%s); using placeholder score.", exc)
-                    eval_result = _placeholder_eval()
+                    logger.warning(
+                        "Combined eval+next-question call failed (%s); falling back to two separate calls.", exc
+                    )
+                    try:
+                        eval_result = await run_in_threadpool(
+                            eval_agent.evaluate_answer, question_text, user_answer
+                        )
+                    except Exception as exc2:
+                        logger.warning("Eval agent call failed (%s); using placeholder score.", exc2)
+                        eval_result = _placeholder_eval()
+
+                    fallback_score = eval_result["overall_score"]
+                    try:
+                        if fallback_score >= DEVILS_ADVOCATE_SCORE_THRESHOLD:
+                            next_q = await run_in_threadpool(
+                                interview_agent.generate_devils_advocate_question,
+                                session.role, question_text, user_answer,
+                            )
+                        else:
+                            next_q = await run_in_threadpool(
+                                interview_agent.generate_question,
+                                session.role, fallback_score, experience_level, candidate_background, False,
+                            )
+                    except Exception as exc2:
+                        logger.warning("Interview agent question generation failed (%s); using placeholder question.", exc2)
+                        next_q = {
+                            "question": f"Let's continue - tell me more about your hands-on experience relevant to the {session.role} role.",
+                            "difficulty": "Medium",
+                            "mode": "standard",
+                        }
 
                 score = eval_result["overall_score"]
                 tech_score = eval_result["technical_score"]
@@ -139,43 +211,7 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                     current_qa.weak_topics = weak_topics
                     db.commit()
 
-                # Trigger Feedback-Loop for weak topics. score is 0-100 (real
-                # EvaluationAgent scale); 70 is the same "neutral baseline"
-                # core.mastery already uses when creating a fresh
-                # TopicMastery row, so a score above/below 70 nudges mastery
-                # up/down accordingly.
-                #
-                # update_topic_mastery can synchronously call NotesAgent (a
-                # blocking Granite call) when it flags a topic weak - run it
-                # in a thread so a slow model call doesn't freeze the event
-                # loop for every other connection on the server.
-                for topic in weak_topics:
-                    score_delta = score - 70.0
-                    await run_in_threadpool(
-                        update_topic_mastery, db, user_id=user_id, topic=topic, score_delta=score_delta
-                    )
-
                 turn_number += 1
-
-                devils_advocate = score >= DEVILS_ADVOCATE_SCORE_THRESHOLD
-                try:
-                    if devils_advocate:
-                        next_q = await run_in_threadpool(
-                            interview_agent.generate_devils_advocate_question,
-                            session.role, question_text, user_answer,
-                        )
-                    else:
-                        next_q = await run_in_threadpool(
-                            interview_agent.generate_question, session.role, score,
-                        )
-                except Exception as exc:
-                    logger.warning("Interview agent question generation failed (%s); using placeholder question.", exc)
-                    next_q = {
-                        "question": f"Let's continue - tell me more about your hands-on experience relevant to the {session.role} role.",
-                        "difficulty": "Medium",
-                        "mode": "standard",
-                    }
-
                 next_question = next_q["question"]
 
                 next_qa = QuestionAnswer(
@@ -204,6 +240,29 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                     "difficulty": next_q.get("difficulty"),
                     "mode": next_q.get("mode", "standard"),
                 })
+
+                # Feedback-loop note regeneration runs *after* the candidate
+                # already has their score and next question, not before -
+                # eval_agent can flag several weak topics from a single
+                # answer, and update_topic_mastery calls NotesAgent (a full
+                # ~150-250s Granite generation) for each one it flags. Doing
+                # that sequentially before responding turned one slow answer
+                # into a multi-topic pileup that could keep the candidate
+                # waiting 15+ minutes for a response that should take one or
+                # two model calls. Score is 0-100 (real EvaluationAgent
+                # scale); 70 is the same "neutral baseline" core.mastery
+                # already uses when creating a fresh TopicMastery row.
+                for topic in weak_topics:
+                    score_delta = score - 70.0
+                    try:
+                        await run_in_threadpool(
+                            update_topic_mastery, db, user_id=user_id, topic=topic, score_delta=score_delta
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "update_topic_mastery failed for topic '%s' (%s); continuing without it.",
+                            topic, exc,
+                        )
 
             elif event == "end":
                 if session:

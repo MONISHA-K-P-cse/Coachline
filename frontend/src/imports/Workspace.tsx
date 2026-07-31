@@ -256,7 +256,7 @@ export default function Workspace({ navigate }: Props) {
                   {latestResume.score_details?.summary && (
                     <p style={{ fontSize: 13, color: '#4B3D37', lineHeight: 1.6, margin: '0 0 14px', fontStyle: 'italic' }}>{latestResume.score_details.summary}</p>
                   )}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: (latestResume.score_details?.rewrite_suggestions?.length ?? 0) > 0 ? 22 : 0 }}>
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#15803d', marginBottom: 8 }}>Strengths</div>
                       {(latestResume.score_details?.strengths ?? []).map((s) => (
@@ -270,6 +270,31 @@ export default function Workspace({ navigate }: Props) {
                       ))}
                     </div>
                   </div>
+
+                  {(latestResume.score_details?.rewrite_suggestions?.length ?? 0) > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B5502E', marginBottom: 10 }}>
+                        Rewrite Suggestions
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        {latestResume.score_details!.rewrite_suggestions!.map((s, i) => (
+                          <div key={i} style={{ background: '#FFFFFF', border: '1.5px solid rgba(181,80,46,0.14)', borderRadius: 14, padding: '14px 16px' }}>
+                            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#7A6B63', marginBottom: 8 }}>
+                              {s.reason}
+                            </div>
+                            <div style={{ background: 'rgba(181,80,46,0.06)', borderRadius: 10, padding: '8px 12px', marginBottom: 6 }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, color: '#B5502E', marginRight: 6 }}>BEFORE</span>
+                              <span style={{ fontSize: 12.5, color: '#4B3D37' }}>{s.original}</span>
+                            </div>
+                            <div style={{ background: 'rgba(21,128,61,0.07)', borderRadius: 10, padding: '8px 12px' }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, color: '#15803d', marginRight: 6 }}>AFTER</span>
+                              <span style={{ fontSize: 12.5, color: '#1C1917' }}>{s.rewritten}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div>

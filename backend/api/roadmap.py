@@ -4,9 +4,11 @@ from starlette.concurrency import run_in_threadpool
 from typing import List
 import logging
 
+from datetime import datetime
+
 from backend.core.database import get_db
 from backend.core.auth import get_current_user
-from backend.models.user import User
+from backend.models.user import User, Profile
 from backend.models.resume import Resume
 from backend.models.roadmap import Roadmap
 from backend.schemas.roadmap import RoadmapCreate, RoadmapResponse
@@ -39,9 +41,25 @@ async def generate_roadmap(
     else:
         current_skills = "No resume on file yet - assume an entry-level baseline for this role."
 
+    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    target_company = profile.target_company if profile else ""
+    experience_level = profile.experience_level if profile else ""
+
+    # Size the roadmap to the time actually left before the interview when
+    # a date is set, rather than always defaulting to a flat 8 weeks.
+    weeks = 8
+    if profile and profile.interview_date:
+        days_left = (profile.interview_date - datetime.utcnow()).days
+        weeks = max(1, min(12, days_left // 7 or 1))
+
     try:
         roadmap_data = await run_in_threadpool(
-            roadmap_agent.generate_roadmap, roadmap_in.target_role, current_skills
+            roadmap_agent.generate_roadmap,
+            roadmap_in.target_role,
+            current_skills,
+            target_company or "",
+            experience_level or "",
+            weeks,
         )
     except Exception as exc:
         logger.warning("Roadmap agent call failed (%s); AI roadmap generator is unavailable.", exc)

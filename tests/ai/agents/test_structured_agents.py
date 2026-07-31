@@ -72,28 +72,32 @@ class ContentAwareEvalClient:
 
 
 class StyleAwareNotesClient:
-    """Returns structurally different blocks depending on which learning-style
-    instructions appear in the prompt (mirrors how the real prompt embeds
-    per-style instructions the LLM would follow)."""
+    """Returns a small text-only block set for the agent's core call, and a
+    style-specific supplement block (diagram/exercise) for its separate
+    supplement call - mirrors the real two-call architecture, where every
+    learning style gets the same core text content and only visual/
+    kinesthetic styles make a second call for one extra block."""
 
     def generate(self, prompt: str) -> str:
-        if "VISUAL learner" in prompt:
-            blocks = [
-                {"type": "text", "content": "Short intro to the topic."},
-                {"type": "diagram", "content": "```mermaid\ngraph TD\nA[Subproblem] --> B[Memoize] --> C[Solution]\n```"},
-                {"type": "text", "content": "| Approach | Time | Space |\n|---|---|---|\n| Brute force | Exponential | O(1) |\n| DP | Polynomial | O(n) |"},
+        if "Produce ONE Mermaid diagram" in prompt:
+            return json.dumps({
+                "content": "```mermaid\ngraph TD\nA[Subproblem] --> B[Memoize] --> C[Solution]\n```",
+            })
+        if "Produce ONE worked example or hands-on practice problem" in prompt:
+            return json.dumps({
+                "content": "Practice: compute Fibonacci(10) with memoization. Solution: ...",
+            })
+        # Core text call (both the full and the simplified retry variant).
+        return json.dumps({
+            "blocks": [
+                {"type": "text", "content": (
+                    "I. Definition: dynamic programming solves complex problems by "
+                    "breaking them into overlapping subproblems.\nII. Explanation: "
+                    "results of subproblems are cached to avoid recomputation.\n"
+                    "III. Key Points: memoization vs tabulation, time/space tradeoffs."
+                )},
             ]
-        elif "KINESTHETIC learner" in prompt:
-            blocks = [
-                {"type": "text", "content": "Brief intro to the topic."},
-                {"type": "exercise", "content": "Practice: compute Fibonacci(10) with memoization. Solution: ..."},
-                {"type": "exercise", "content": "Practice: solve the coin-change problem. Solution: ..."},
-            ]
-        else:
-            blocks = [
-                {"type": "text", "content": "I. Definition\nII. Explanation\nIII. Key Points\nIV. Examples\nV. Interview Tips"},
-            ]
-        return json.dumps({"blocks": blocks})
+        })
 
 
 class BrokenClient:
@@ -187,8 +191,8 @@ def test_notes_differ_structurally_by_learning_style():
     kinesthetic_types = [b["type"] for b in kinesthetic["blocks"]]
     reading_types = [b["type"] for b in reading["blocks"]]
 
-    assert "diagram" in visual_types
-    assert "exercise" in kinesthetic_types
+    assert visual_types == ["text", "diagram"]
+    assert kinesthetic_types == ["text", "exercise"]
     assert reading_types == ["text"]
     assert visual_types != kinesthetic_types
     assert visual_types != reading_types
@@ -200,6 +204,36 @@ def test_notes_agent_falls_back_to_single_text_block_on_parse_failure():
 
     assert len(result["blocks"]) == 1
     assert result["blocks"][0]["type"] == "text"
+
+
+class FailsOnceThenSucceedsClient:
+    """Simulates a model that can't produce the fuller multi-block JSON on
+    the first attempt but succeeds on the simplified single-block retry -
+    exercises the retry-before-fallback path so the placeholder is only used
+    as a last resort, not whenever the first attempt is imperfect."""
+
+    def __init__(self):
+        self.calls = 0
+
+    RECOVERED_CONTENT = (
+        "Recovered via simplified retry: dynamic programming solves problems "
+        "by breaking them into overlapping subproblems and caching results."
+    )
+
+    def generate(self, prompt: str) -> str:
+        self.calls += 1
+        if self.calls == 1:
+            return "not valid json at all"
+        return json.dumps({"blocks": [{"type": "text", "content": self.RECOVERED_CONTENT}]})
+
+
+def test_notes_agent_retries_simplified_prompt_before_falling_back():
+    client = FailsOnceThenSucceedsClient()
+    agent = NotesAgent(client=client)
+    result = agent.generate_notes("Dynamic Programming", learning_style="reading_writing")
+
+    assert client.calls == 2
+    assert result["blocks"] == [{"type": "text", "content": client.RECOVERED_CONTENT}]
 
 
 # ---------------------------------------------------------------------------

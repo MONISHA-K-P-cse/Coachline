@@ -3,6 +3,15 @@
 
 const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
 
+// Ordinary CRUD calls should fail fast. Calls backed by a live Granite
+// generation (resume/roadmap/notes/mentor) can legitimately take up to the
+// backend's own ~240s per-call timeout (see GraniteClient.ollama_timeout),
+// so their client-side budget is set above that so the backend's own clear
+// timeout response arrives first under normal conditions - this is a
+// safety net for a request that hangs at the network level instead.
+export const DEFAULT_TIMEOUT_MS = 20_000
+export const AGENT_TIMEOUT_MS = 260_000
+
 let authToken: string | null = null
 
 export function setAuthToken(token: string | null) {
@@ -11,13 +20,17 @@ export function setAuthToken(token: string | null) {
 
 export class ApiError extends Error {
   status: number
-  constructor(status: number, message: string) {
+  /** true when this error came from the client giving up (timeout/abort)
+   *  rather than a response the server actually sent back. */
+  isTimeout: boolean
+  constructor(status: number, message: string, isTimeout = false) {
     super(message)
     this.status = status
+    this.isTimeout = isTimeout
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}, timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<T> {
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string> | undefined),
   }
@@ -28,7 +41,20 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers['Authorization'] = `Bearer ${authToken}`
   }
 
-  const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers })
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers, signal: controller.signal })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new ApiError(0, 'This is taking longer than expected. Please try again.', true)
+    }
+    throw new ApiError(0, 'Could not reach the server. Check your connection and try again.')
+  } finally {
+    clearTimeout(timer)
+  }
 
   if (!res.ok) {
     let detail = res.statusText
@@ -93,6 +119,12 @@ export function updateProfile(data: Partial<{
 
 // ─── Resume ──────────────────────────────────────────────────────────────────
 
+export interface RewriteSuggestion {
+  original: string
+  rewritten: string
+  reason: string
+}
+
 export interface ResumeResponse {
   id: number
   filename: string
@@ -105,6 +137,7 @@ export interface ResumeResponse {
     summary?: string
     strengths?: string[]
     improvements?: string[]
+    rewrite_suggestions?: RewriteSuggestion[]
     fallback_used?: boolean
   } | null
   uploaded_at: string
@@ -113,7 +146,7 @@ export interface ResumeResponse {
 export function uploadResume(file: File): Promise<ResumeResponse> {
   const form = new FormData()
   form.append('file', file)
-  return request('/resume/upload', { method: 'POST', body: form })
+  return request('/resume/upload', { method: 'POST', body: form }, AGENT_TIMEOUT_MS)
 }
 
 export function listResumes(): Promise<ResumeResponse[]> {
@@ -140,7 +173,7 @@ export interface RoadmapResponse {
 }
 
 export function generateRoadmap(target_role: string, title?: string): Promise<RoadmapResponse> {
-  return request('/roadmap/generate', { method: 'POST', body: JSON.stringify({ target_role, title }) })
+  return request('/roadmap/generate', { method: 'POST', body: JSON.stringify({ target_role, title }) }, AGENT_TIMEOUT_MS)
 }
 
 export function listRoadmaps(): Promise<RoadmapResponse[]> {
@@ -173,7 +206,7 @@ export function listNotes(bookmarkedOnly = false): Promise<NoteResponse[]> {
 export function generateNote(topic: string, roadmapId?: number): Promise<NoteResponse> {
   const params = new URLSearchParams({ topic })
   if (roadmapId) params.set('roadmap_id', String(roadmapId))
-  return request(`/notes/generate?${params.toString()}`, { method: 'POST' })
+  return request(`/notes/generate?${params.toString()}`, { method: 'POST' }, AGENT_TIMEOUT_MS)
 }
 
 export function toggleBookmark(noteId: number): Promise<NoteResponse> {
@@ -296,7 +329,7 @@ export interface MentorMessage {
 }
 
 export function sendMentorMessage(message: string): Promise<MentorMessage[]> {
-  return request('/mentor/chat', { method: 'POST', body: JSON.stringify({ message }) })
+  return request('/mentor/chat', { method: 'POST', body: JSON.stringify({ message }) }, AGENT_TIMEOUT_MS)
 }
 
 export function getMentorHistory(): Promise<MentorMessage[]> {

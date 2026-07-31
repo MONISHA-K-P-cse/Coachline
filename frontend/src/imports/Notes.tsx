@@ -54,6 +54,7 @@ export default function Notes({ navigate }: Props) {
   const [loading, setLoading] = useState(true)
   const [topic, setTopic] = useState('')
   const [generating, setGenerating] = useState(false)
+  const [slowGenerate, setSlowGenerate] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const load = async () => {
@@ -67,11 +68,14 @@ export default function Notes({ navigate }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const runGenerate = async () => {
     if (!topic.trim()) return
     setGenerating(true)
+    setSlowGenerate(false)
     setError(null)
+    // Real generations typically finish in 15-100s; only nudge the user
+    // that it's still working (rather than silently spinning) past that.
+    const slowTimer = setTimeout(() => setSlowGenerate(true), 15_000)
     try {
       const note = await api.generateNote(topic.trim())
       setTopic('')
@@ -80,8 +84,15 @@ export default function Notes({ navigate }: Props) {
     } catch (err) {
       setError(err instanceof api.ApiError ? err.message : 'Could not generate this note.')
     } finally {
+      clearTimeout(slowTimer)
+      setSlowGenerate(false)
       setGenerating(false)
     }
+  }
+
+  const handleGenerate = (e: React.FormEvent) => {
+    e.preventDefault()
+    runGenerate()
   }
 
   const handleBookmark = async (id: number) => {
@@ -124,7 +135,23 @@ export default function Notes({ navigate }: Props) {
             >
               {generating ? 'Generating…' : 'Generate'}
             </button>
-            {error && <p style={{ fontSize: 11, color: '#B5502E', margin: '6px 0 0' }}>{error}</p>}
+            {generating && slowGenerate && (
+              <p style={{ fontSize: 11, color: '#7A6B63', margin: '6px 0 0' }}>
+                Still working - real model generation can take a few minutes.
+              </p>
+            )}
+            {error && (
+              <div style={{ marginTop: 6 }}>
+                <p style={{ fontSize: 11, color: '#B5502E', margin: '0 0 4px' }}>{error}</p>
+                <button
+                  type="button"
+                  onClick={runGenerate}
+                  style={{ background: 'none', border: '1px solid rgba(181,80,46,0.30)', borderRadius: 100, cursor: 'pointer', padding: '4px 10px', fontSize: 10.5, fontWeight: 700, color: '#B5502E', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                >
+                  Retry
+                </button>
+              </div>
+            )}
           </form>
 
           {notes.length === 0 && (

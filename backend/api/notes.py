@@ -30,9 +30,10 @@ async def generate_note(
     learning_style, using the real Notes Agent (Granite + RAG)."""
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
     learning_style = profile.learning_style if profile else "reading_writing"
+    target_role = profile.target_role if profile and profile.target_role else ""
 
     try:
-        generated = await run_in_threadpool(notes_agent.generate_notes, topic, learning_style)
+        generated = await run_in_threadpool(notes_agent.generate_notes, topic, learning_style, target_role)
     except Exception as exc:
         logger.warning("Notes agent call failed (%s); AI note generator is unavailable.", exc)
         raise HTTPException(
