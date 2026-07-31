@@ -66,7 +66,31 @@ graph TD
 
 ---
 
-## 2. Core Features & Implementation
+## 2. Technology Used
+
+### I. Data Prep Kit
+* **Document Processing**: Extracted text blocks, headers, and metadata from raw text transcripts and curriculum files to chunk data uniformly.
+* **Resume Parsing**: Utilized `python-docx` and string preprocessing scripts to sanitize, align, and clean leading indents, tabs, and bold highlights in Word and Markdown resume files.
+
+### II. Granite
+* **Foundation Models**: Built around **IBM's Granite foundation models** (e.g. `granite-3.0` models like Granite 3B/1B parameters) to generate context-grounded text.
+* **Granite client orchestration**: Implemented in [granite_client.py](file:///Users/monisha/Desktop/Coachline/ai/agents/granite_client.py) to manage system prompts, formatting rules, temperature, and offline local Ollama model simulation wrappers.
+
+### III. RAG (Retrieval-Augmented Generation)
+* **Cloud Platform**: Powered by **IBM (watsonx.ai)**.
+* **Document Retrieval**: Indexes core computer science modules (data structures, DBMS, OOP, systems architecture, machine learning) inside a local `ChromaDB` vector database. It queries the vector space via a SentenceTransformers embedding model (`all-MiniLM-L6-v2`) and appends role-grounded context to Granite prompt templates before final text generation.
+
+### IV. Agentic Frameworks
+* **Cloud Platform**: Powered by **IBM (watsonx.ai)**.
+* **Specialized AI Agents**: Implemented as cooperative, single-task agents:
+  * **Resume Agent**: Validates ATS keyword density and constructs format-preserving PDF layouts.
+  * **Interview Pilot Agent**: Coordinates real-time mock interview progress, scoring answers dynamically on technical accuracy, behavioral metrics, and STAR methods.
+  * **Notes Agent**: Adapts generation formats dynamically into Visual diagrams, Kinesthetic programming exercises, or Reading summaries.
+  * **Mentor Agent**: Contextual chatbot replying dynamically to target role preparational questions.
+
+---
+
+## 3. Core Features & Implementation
 
 ### 📋 Resume Upload & ATS Optimization
 * **Dual Parsing**: Supports uploading standard text, raw markdown, and Microsoft Word files (`.docx`) using a backend `python-docx` file parser.
@@ -79,25 +103,12 @@ graph TD
 * **Score Evaluation**: Rates performance on technical logic, communication flow, and STAR structured guidelines, offering feedback and weak-area flags.
 
 ### 📚 VARK Multi-Style Study Notes
-* **Adaptive Styling**: Generates custom study notes matching the candidate's core VARK profile:
-  * **Visual**: Renders dynamic Mermaid flowcharts, scaling topologies, and structural memory layout blocks.
-  * **Kinesthetic**: Appends complete Python/Java programming exercises, algorithm reversal setups, and database isolation script tasks.
-  * **Reading/Writing**: Provides structured, high-density outline bullet lists detailing specifications.
-* **Topic-Specific Registry**: Contains custom material for core fields:
-  * *DBMS & SQL*: Isolation levels, serialization transactions, master-replica replication flowcharts.
-  * *Data Structures & Algorithms*: Contiguous arrays vs. linked pointer lists, linked list reversal logic, Big O notation (`O(1)`, `O(log n)`, `O(n)`).
-  * *Docker & Volumes*: Kernel process isolation (namespaces, cgroups), layers caching, container configurations.
-  * *Redis & Caching*: Cache-aside sequence models, lazy-loading patterns, LRU/LFU memory eviction.
-  * *JWT & Security*: Header/payload segment structures, stateless cookie authorization.
-  * *Java & OOP*: Encapsulation, inheritance, polymorphism, abstraction, and JVM execution bytecode rules.
-  * *AI & ML*: Supervised classifier gradient updates, transformer neural layers flow.
-
-### 💬 Conversational Career Mentor
-* **Intent-Specific Chat**: An interactive mentoring companion recognizing greetings, start directives, and technical subjects (e.g. `acid`, `docker`, `java`, `all`), offering relevant advice rather than repeating static boilerplate.
+* **Adaptive Styling**: Generates custom study notes matching the candidate's core VARK profile (Visual flowcharts, Kinesthetic programming labs, Reading prose).
+* **Topic-Specific Registry**: Contains custom material for core fields (DBMS isolation levels, DS linked lists and Big O, Docker namespaces, Redis cache-aside caching, JWT stateless authentication, Java OOP pillars, and ML gradient steps).
 
 ---
 
-## 3. Database Dev Isolation
+## 4. Database Dev Isolation
 
 To protect manual dev accounts and registered dashboard profiles, the test suite is isolated from the development database:
 
@@ -106,7 +117,7 @@ To protect manual dev accounts and registered dashboard profiles, the test suite
 
 ---
 
-## 4. Run & Verification Guide
+## 5. Run & Verification Guide
 
 ### Starting the Applications
 > [!NOTE]
