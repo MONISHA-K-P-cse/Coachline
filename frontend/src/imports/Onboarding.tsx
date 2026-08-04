@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Nav } from '../components/Nav'
 import { useAuth } from '../lib/AuthContext'
 import { updateProfile, ApiError } from '../lib/apiClient'
@@ -42,14 +42,28 @@ const LEARNING_STYLES = [
 ] as const
 
 export default function Onboarding({ navigate }: Props) {
-  const { refreshUser } = useAuth()
-  const [targetRole, setTargetRole] = useState('')
-  const [targetCompany, setTargetCompany] = useState('')
-  const [experienceLevel, setExperienceLevel] = useState('')
-  const [interviewDate, setInterviewDate] = useState('')
-  const [learningStyle, setLearningStyle] = useState<string>('reading_writing')
+  const { user, refreshUser } = useAuth()
+  const [targetRole, setTargetRole] = useState(user?.profile?.target_role || '')
+  const [targetCompany, setTargetCompany] = useState(user?.profile?.target_company || '')
+  const [experienceLevel, setExperienceLevel] = useState(user?.profile?.experience_level || '')
+  const [interviewDate, setInterviewDate] = useState(
+    user?.profile?.interview_date ? new Date(user.profile.interview_date).toISOString().split('T')[0] : ''
+  )
+  const [learningStyle, setLearningStyle] = useState<string>(user?.profile?.learning_style || 'reading_writing')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (user?.profile) {
+      if (user.profile.target_role) setTargetRole(user.profile.target_role)
+      if (user.profile.target_company) setTargetCompany(user.profile.target_company)
+      if (user.profile.experience_level) setExperienceLevel(user.profile.experience_level)
+      if (user.profile.interview_date) {
+        setInterviewDate(new Date(user.profile.interview_date).toISOString().split('T')[0])
+      }
+      if (user.profile.learning_style) setLearningStyle(user.profile.learning_style)
+    }
+  }, [user])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

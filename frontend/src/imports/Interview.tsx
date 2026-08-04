@@ -85,7 +85,36 @@ export default function Interview({ navigate }: Props) {
 
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const [secondsSpent, setSecondsSpent] = useState(0)
+  const [lastAnswerDuration, setLastAnswerDuration] = useState<number | null>(null)
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recognitionRef = useRef<any>(null)
+
+  useEffect(() => {
+    if (stage === 'answering') {
+      setSecondsSpent(0)
+      timerIntervalRef.current = setInterval(() => {
+        setSecondsSpent(prev => prev + 1)
+      }, 1000)
+    } else {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = null
+      }
+    }
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = null
+      }
+    }
+  }, [stage, question])
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60)
+    const s = secs % 60
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
 
   useEffect(() => () => {
     clearWaitTimer()
@@ -106,6 +135,27 @@ export default function Interview({ navigate }: Props) {
         window.speechSynthesis.cancel()
         const cleanText = question.replace(/[*#_`]/g, '')
         const utterance = new SpeechSynthesisUtterance(cleanText)
+        
+        const voices = window.speechSynthesis.getVoices()
+        const femaleVoiceNames = ["samantha", "karen", "moira", "tessa", "zira", "google us english", "microsoft zira", "female", "en-us"]
+        
+        let selectedVoice = null
+        for (const name of femaleVoiceNames) {
+          const found = voices.find(v => v.name.toLowerCase().includes(name) && v.lang.startsWith('en'))
+          if (found) {
+            selectedVoice = found
+            break
+          }
+        }
+        
+        if (!selectedVoice && voices.length) {
+          selectedVoice = voices.find(v => v.lang.startsWith('en')) || voices[0]
+        }
+        
+        if (selectedVoice) {
+          utterance.voice = selectedVoice
+        }
+
         utterance.onend = () => setIsSpeaking(false)
         utterance.onerror = () => setIsSpeaking(false)
         setIsSpeaking(true)
@@ -234,6 +284,7 @@ export default function Interview({ navigate }: Props) {
       recognitionRef.current?.stop()
       setIsRecording(false)
     }
+    setLastAnswerDuration(secondsSpent)
     wsRef.current.send(JSON.stringify({ event: 'answer', user_answer: answer }))
     setStage('evaluating')
     armWaitTimer(
@@ -335,10 +386,15 @@ export default function Interview({ navigate }: Props) {
           <>
             <div style={{ background: '#FFFFFF', borderRadius: 20, border: '1.5px solid rgba(181,80,46,0.12)', padding: 32, marginBottom: 20, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   {mode === 'devils_advocate' && (
                     <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: '#FAFAF8', background: 'linear-gradient(135deg, #1C1917, #3D2419)', padding: '3px 10px', borderRadius: 100 }}>
                       Devil's Advocate
+                    </span>
+                  )}
+                  {stage === 'answering' && (
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: '#FAFAF8', background: '#B5502E', padding: '3px 10px', borderRadius: 100, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      ⏳ {formatTime(secondsSpent)}
                     </span>
                   )}
                 </div>
@@ -447,8 +503,15 @@ export default function Interview({ navigate }: Props) {
                 <div style={{ fontSize: 11, color: '#7A6B63', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Score</div>
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ height: 8, borderRadius: 4, background: 'rgba(181,80,46,0.12)', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${feedback.previous_score}%`, borderRadius: 4, background: 'linear-gradient(90deg, #B5502E, #E0A458)', transition: 'width 1s ease' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ height: 8, borderRadius: 4, background: 'rgba(181,80,46,0.12)', overflow: 'hidden', flex: 1, marginRight: 16 }}>
+                    <div style={{ height: '100%', width: `${feedback.previous_score}%`, borderRadius: 4, background: 'linear-gradient(90deg, #B5502E, #E0A458)', transition: 'width 1s ease' }} />
+                  </div>
+                  {lastAnswerDuration !== null && (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#B5502E', background: 'rgba(181,80,46,0.08)', padding: '2px 8px', borderRadius: 100, flexShrink: 0 }}>
+                      ⏱️ {formatTime(lastAnswerDuration)}
+                    </span>
+                  )}
                 </div>
                 <p style={{ fontSize: 13, color: '#7A6B63', margin: '8px 0 0', lineHeight: 1.5 }}>{feedback.feedback}</p>
               </div>

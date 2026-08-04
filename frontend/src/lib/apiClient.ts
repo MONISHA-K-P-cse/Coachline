@@ -252,6 +252,10 @@ export function toggleBookmark(noteId: number): Promise<NoteResponse> {
   return request(`/notes/${noteId}/bookmark`, { method: 'PATCH' })
 }
 
+export function deleteNote(noteId: number): Promise<void> {
+  return request(`/notes/${noteId}`, { method: 'DELETE' })
+}
+
 // ─── Interview ───────────────────────────────────────────────────────────────
 
 export interface InterviewSession {
@@ -373,4 +377,12 @@ export function sendMentorMessage(message: string): Promise<MentorMessage[]> {
 
 export function getMentorHistory(): Promise<MentorMessage[]> {
   return request('/mentor/history')
+}
+
+export function clearMentorHistory(): Promise<void> {
+  return request('/mentor/history', { method: 'DELETE' })
+}
+
+export function startNewMentorSession(): Promise<MentorMessage> {
+  return request('/mentor/new-session', { method: 'POST' })
 }

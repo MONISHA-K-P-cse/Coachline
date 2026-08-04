@@ -69,3 +69,31 @@ def get_chat_history(
         .order_by(CareerMentorMessage.created_at.asc())
         .all()
     )
+
+
+@router.delete("/history", status_code=status.HTTP_204_NO_CONTENT)
+def clear_chat_history(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    db.query(CareerMentorMessage).filter(CareerMentorMessage.user_id == current_user.id).delete()
+    db.commit()
+    return None
+
+
+@router.post("/new-session", response_model=MentorMessageResponse, status_code=status.HTTP_201_CREATED)
+def start_new_session(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from datetime import datetime
+    session_title = f"Chat - {datetime.now().strftime('%b %d, %H:%M')}"
+    system_msg = CareerMentorMessage(
+        user_id=current_user.id,
+        sender="system",
+        message=session_title,
+    )
+    db.add(system_msg)
+    db.commit()
+    db.refresh(system_msg)
+    return system_msg

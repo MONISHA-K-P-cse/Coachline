@@ -153,21 +153,38 @@ export function Nav({ page, navigate }: NavProps) {
           </button>
         )}
         {isApp && user && (
-          <button
-            onClick={() => { logout(); navigate('landing') }}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: 500,
-              color: '#7A6B63',
-              padding: '6px 10px',
-              fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-            }}
-          >
-            Log out
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button
+              onClick={() => navigate('onboarding')}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 500,
+                color: '#4B3D37',
+                padding: '6px 10px',
+                fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+              }}
+            >
+              Settings
+            </button>
+            <button
+              onClick={() => { logout(); navigate('landing') }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 500,
+                color: '#7A6B63',
+                padding: '6px 10px',
+                fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+              }}
+            >
+              Log out
+            </button>
+          </div>
         )}
         {!isAuthPage && (
           <button

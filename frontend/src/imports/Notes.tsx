@@ -100,6 +100,22 @@ export default function Notes({ navigate }: Props) {
     await load()
   }
 
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this note?")) return
+    try {
+      await api.deleteNote(id)
+      const remaining = notes.filter((n) => n.id !== id)
+      setNotes(remaining)
+      if (remaining.length) {
+        setSelected(remaining[0].id)
+      } else {
+        setSelected(null)
+      }
+    } catch (err) {
+      setError("Could not delete this note.")
+    }
+  }
+
   const note = notes.find((n) => n.id === selected)
 
   if (loading) {
@@ -178,9 +194,12 @@ export default function Notes({ navigate }: Props) {
             <p style={{ color: '#7A6B63' }}>Select a note, or generate one for a topic you want to study.</p>
           ) : (
             <div style={{ maxWidth: 680 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: 10 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: '#B5502E', background: 'rgba(181,80,46,0.09)', padding: '4px 12px', borderRadius: 100 }}>{note.category}</span>
                 <button onClick={() => handleBookmark(note.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: note.is_bookmarked ? '#E0A458' : '#C4BAB3' }}>★</button>
+                <button onClick={() => handleDelete(note.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#7A6B63', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif" }} title="Delete Note">
+                  <span style={{ fontSize: 14 }}>🗑️</span> Delete
+                </button>
               </div>
               <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 24, fontWeight: 700, color: '#1C1917', margin: '16px 0 6px', lineHeight: 1.3 }}>{note.title}</h2>
               <p style={{ fontSize: 13, color: '#7A6B63', margin: '0 0 28px' }}>{note.note_type.replace('_', ' ')} · {new Date(note.created_at).toLocaleString()}</p>
