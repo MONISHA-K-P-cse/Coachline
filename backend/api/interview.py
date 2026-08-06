@@ -96,7 +96,9 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                     user_id=user_id,
                     role=role,
                     status="active",
-                    started_at=datetime.utcnow()
+                    started_at=datetime.utcnow(),
+                    week=week,
+                    topic=topic
                 )
                 db.add(session)
                 db.commit()
@@ -160,6 +162,7 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                     eval_result, next_q = await run_in_threadpool(
                         interview_agent.evaluate_and_generate_next,
                         session.role, question_text, user_answer, experience_level, candidate_background,
+                        session.week, session.topic
                     )
                 except Exception as exc:
                     logger.warning(
@@ -184,6 +187,7 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                             next_q = await run_in_threadpool(
                                 interview_agent.generate_question,
                                 session.role, fallback_score, experience_level, candidate_background, False,
+                                session.week, session.topic
                             )
                     except Exception as exc2:
                         logger.warning("Interview agent question generation failed (%s); using placeholder question.", exc2)

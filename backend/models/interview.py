@@ -18,6 +18,8 @@ class InterviewSession(Base):
     star_score = Column(Float, default=0.0)
     started_at = Column(DateTime, default=datetime.utcnow)
     ended_at = Column(DateTime, nullable=True)
+    week = Column(Integer, default=1)
+    topic = Column(String, nullable=True)
 
     user = relationship("User", back_populates="interviews")
     qa_pairs = relationship("QuestionAnswer", back_populates="session", cascade="all, delete-orphan")

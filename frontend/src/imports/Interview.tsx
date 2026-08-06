@@ -43,6 +43,8 @@ export default function Interview({ navigate }: Props) {
   const [ended, setEnded] = useState<{ average_score: number; scores_breakdown: EvalPayload['scores_breakdown'] } | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [slowWait, setSlowWait] = useState(false)
+  const [unlockedNextWeek, setUnlockedNextWeek] = useState(false)
+  const [practiceWeek, setPracticeWeek] = useState<number | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const waitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -226,6 +228,9 @@ export default function Interview({ navigate }: Props) {
       const weekStr = localStorage.getItem('active_roadmap_week')
       const topicStr = localStorage.getItem('active_roadmap_topic')
       const weekVal = weekStr ? parseInt(weekStr) : 1
+      setPracticeWeek(weekVal)
+      setUnlockedNextWeek(false)
+      localStorage.setItem('active_roadmap_week_for_unlock', weekVal.toString())
       ws.send(JSON.stringify({
         event: 'start',
         role,
@@ -266,6 +271,19 @@ export default function Interview({ navigate }: Props) {
           window.speechSynthesis.cancel()
           setIsSpeaking(false)
         }
+        
+        // Progress unlock check
+        const weekForUnlock = localStorage.getItem('active_roadmap_week_for_unlock')
+        if (weekForUnlock) {
+          const completedWeek = parseInt(weekForUnlock)
+          const currentUnlocked = parseInt(localStorage.getItem('roadmap_max_unlocked') || '1')
+          if (completedWeek === currentUnlocked && data.average_score >= 50) {
+            localStorage.setItem('roadmap_max_unlocked', (completedWeek + 1).toString())
+            setUnlockedNextWeek(true)
+          }
+          localStorage.removeItem('active_roadmap_week_for_unlock')
+        }
+
         setEnded({ average_score: data.average_score, scores_breakdown: data.scores_breakdown })
         setStage('ended')
       } else if (data.event === 'error') {
@@ -571,6 +589,42 @@ export default function Interview({ navigate }: Props) {
               <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 48, fontWeight: 700, color: '#FAFAF8' }}>{Math.round(ended.average_score)}</div>
               <div style={{ fontSize: 12, color: 'rgba(250,250,248,0.6)' }}>Average score across the session</div>
             </div>
+
+            {unlockedNextWeek && (
+              <div style={{
+                background: 'rgba(21,128,61,0.08)',
+                border: '1.5px solid #15803D',
+                borderRadius: 16,
+                padding: '16px 20px',
+                textAlign: 'center',
+                color: '#15803D',
+                fontSize: 13,
+                fontWeight: 600,
+                lineHeight: 1.5,
+                boxShadow: '0 4px 12px rgba(21,128,61,0.05)',
+                fontFamily: "'Plus Jakarta Sans', sans-serif"
+              }}>
+                🎉 Congratulations! You scored {Math.round(ended.average_score)}% and successfully unlocked Week {practiceWeek ? practiceWeek + 1 : 2} of your roadmap!
+              </div>
+            )}
+            
+            {practiceWeek !== null && !unlockedNextWeek && ended.average_score < 50 && (
+              <div style={{
+                background: 'rgba(181,80,46,0.08)',
+                border: '1.5px solid #B5502E',
+                borderRadius: 16,
+                padding: '16px 20px',
+                textAlign: 'center',
+                color: '#B5502E',
+                fontSize: 13,
+                fontWeight: 600,
+                lineHeight: 1.5,
+                fontFamily: "'Plus Jakarta Sans', sans-serif"
+              }}>
+                💡 Tip: You scored {Math.round(ended.average_score)}%. Try to score 50% or higher to unlock the next week's practice session!
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
               <button onClick={() => navigate('mastery')} style={{ background: 'none', border: '1.5px solid rgba(181,80,46,0.30)', borderRadius: 100, cursor: 'pointer', padding: '11px 22px', fontSize: 13, fontWeight: 600, color: '#B5502E', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 View Mastery Map

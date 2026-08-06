@@ -172,6 +172,8 @@ Do NOT use JSON.
         answer: str,
         experience_level: str = "",
         candidate_background: str = "",
+        week: int = 1,
+        topic: str = "",
     ):
         """
         Scores the candidate's answer AND produces the next question in a
@@ -190,6 +192,10 @@ Role:
 {role}
 {f"Candidate Experience Level: {experience_level}" if experience_level else ""}
 {f"Candidate Background (from their resume):\n{candidate_background}" if candidate_background else ""}
+Week:
+{week}
+Topic:
+{topic}
 
 Reference Material (may be about an unrelated subject area - ONLY use it if
 it genuinely matches the Role above; otherwise ignore it completely and

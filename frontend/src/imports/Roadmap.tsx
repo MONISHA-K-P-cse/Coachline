@@ -13,11 +13,11 @@ export default function Roadmap({ navigate }: Props) {
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [maxUnlockedWeek, setMaxUnlockedWeek] = useState<number>(1)
+
   const load = useCallback(async () => {
     setError(null)
     const existing = await api.listRoadmaps()
-    // Most-recently-created roadmap is the one that reflects the candidate's
-    // current profile (target role/company/experience level/interview date).
     const latest = existing.length
       ? existing.reduce((a, b) => (new Date(b.created_at) > new Date(a.created_at) ? b : a))
       : null
@@ -26,6 +26,10 @@ export default function Roadmap({ navigate }: Props) {
 
   useEffect(() => {
     load().finally(() => setLoading(false))
+    const val = localStorage.getItem('roadmap_max_unlocked')
+    if (val) {
+      setMaxUnlockedWeek(parseInt(val))
+    }
   }, [load])
 
   const handleGenerate = async () => {
@@ -86,35 +90,70 @@ export default function Roadmap({ navigate }: Props) {
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
               <div style={{ flex: 1, height: 8, borderRadius: 100, background: 'rgba(181,80,46,0.1)', overflow: 'hidden' }}>
-                <div style={{ width: `${roadmap.progress_percentage}%`, height: '100%', background: '#B5502E' }} />
+                <div style={{ width: `${Math.min(100, Math.round(((maxUnlockedWeek - 1) / (steps.length || 1)) * 100))}%`, height: '100%', background: '#B5502E', transition: 'width 0.3s ease' }} />
               </div>
-              <span style={{ fontSize: 12, color: '#7A6B63', whiteSpace: 'nowrap' }}>{roadmap.progress_percentage}% complete</span>
+              <span style={{ fontSize: 12, color: '#7A6B63', whiteSpace: 'nowrap' }}>
+                {Math.min(100, Math.round(((maxUnlockedWeek - 1) / (steps.length || 1)) * 100))}% complete
+              </span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {steps.map((step) => (
-                <div key={step.step_number} style={{ background: '#FFFFFF', borderRadius: 18, border: '1.5px solid rgba(181,80,46,0.12)', padding: '18px 24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <span style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 16, fontWeight: 700, color: '#1C1917' }}>
-                      Week {step.step_number}: {step.title}
-                    </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 11, color: '#7A6B63' }}>{step.estimated_hours}h</span>
-                      <button
-                        onClick={() => {
-                          localStorage.setItem('active_roadmap_week', step.step_number.toString())
-                          localStorage.setItem('active_roadmap_topic', step.title)
-                          navigate('interview')
-                        }}
-                        style={{ background: 'none', border: '1px solid rgba(181,80,46,0.25)', borderRadius: 8, cursor: 'pointer', padding: '4px 10px', fontSize: 11, fontWeight: 600, color: '#B5502E', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-                      >
-                        Practice
-                      </button>
+              {steps.map((step) => {
+                const isLocked = step.step_number > maxUnlockedWeek
+                return (
+                  <div
+                    key={step.step_number}
+                    style={{
+                      background: isLocked ? '#F5F5F4' : '#FFFFFF',
+                      borderRadius: 18,
+                      border: isLocked ? '1.5px dashed rgba(120,107,99,0.2)' : '1.5px solid rgba(181,80,46,0.12)',
+                      padding: '18px 24px',
+                      boxShadow: isLocked ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
+                      opacity: isLocked ? 0.65 : 1,
+                      position: 'relative'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 16, fontWeight: 700, color: isLocked ? '#7A6B63' : '#1C1917', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        Week {step.step_number}: {step.title} {isLocked && '🔒'}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 11, color: '#7A6B63' }}>{step.estimated_hours}h</span>
+                        {isLocked ? (
+                          <span style={{ fontSize: 11, fontWeight: 600, color: '#7A6B63', background: 'rgba(120,107,99,0.1)', padding: '4px 10px', borderRadius: 8 }}>
+                            Locked
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              localStorage.setItem('active_roadmap_week', step.step_number.toString())
+                              localStorage.setItem('active_roadmap_topic', step.title)
+                              navigate('interview')
+                            }}
+                            style={{
+                              background: '#B5502E',
+                              border: 'none',
+                              borderRadius: 8,
+                              cursor: 'pointer',
+                              padding: '5px 12px',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: '#FFFFFF',
+                              fontFamily: "'Plus Jakarta Sans', sans-serif",
+                              boxShadow: '0 2px 6px rgba(181,80,46,0.2)'
+                            }}
+                          >
+                            Practice
+                          </button>
+                        )}
+                      </div>
                     </div>
+                    <p style={{ fontSize: 13, color: isLocked ? '#8C827D' : '#57534E', lineHeight: 1.6, margin: 0 }}>
+                      {isLocked ? `Practice Week ${step.step_number - 1} and get an overall score of 50+ to unlock this topic.` : step.description}
+                    </p>
                   </div>
-                  <p style={{ fontSize: 13, color: '#57534E', lineHeight: 1.6, margin: 0 }}>{step.description}</p>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             <button

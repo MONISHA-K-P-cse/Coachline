@@ -24,6 +24,24 @@ logger = logging.getLogger("main")
 # Auto-create tables for development
 Base.metadata.create_all(bind=engine)
 
+from sqlalchemy import text
+try:
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("SELECT week FROM interview_sessions LIMIT 1"))
+        except Exception:
+            conn.execute(text("ALTER TABLE interview_sessions ADD COLUMN week INTEGER DEFAULT 1"))
+            conn.commit()
+            logger.info("Auto-migrated database: added week column to interview_sessions table.")
+        try:
+            conn.execute(text("SELECT topic FROM interview_sessions LIMIT 1"))
+        except Exception:
+            conn.execute(text("ALTER TABLE interview_sessions ADD COLUMN topic VARCHAR"))
+            conn.commit()
+            logger.info("Auto-migrated database: added topic column to interview_sessions table.")
+except Exception as e:
+    logger.warning("Auto-migration check failed: %s", e)
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
