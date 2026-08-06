@@ -44,6 +44,8 @@ class InterviewAgent:
         experience_level: str = "",
         candidate_background: str = "",
         is_opening_question: bool = False,
+        week: int = 1,
+        topic: str = "",
     ):
         context = "\n\n".join(
             retrieve(role, k=3)
@@ -75,6 +77,10 @@ Role:
 {role}
 {f"Candidate Experience Level: {experience_level}" if experience_level else ""}
 {f"Candidate Background (from their resume):\n{candidate_background}" if candidate_background else ""}
+Week:
+{week}
+Topic:
+{topic}
 
 Difficulty:
 {difficulty}

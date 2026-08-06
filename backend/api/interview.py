@@ -86,6 +86,8 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
 
             if event == "start":
                 role = data.get("role", "Backend Engineer")
+                week = data.get("week", 1)
+                topic = data.get("topic", "")
                 profile = db.query(Profile).filter(Profile.user_id == user_id).first()
                 experience_level = profile.experience_level if profile and profile.experience_level else ""
                 candidate_background = _candidate_background(db, user_id)
@@ -108,7 +110,7 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                 try:
                     opening = await run_in_threadpool(
                         interview_agent.generate_question,
-                        role, 0, experience_level, candidate_background, True,
+                        role, 0, experience_level, candidate_background, True, week, topic
                     )
                     initial_q = opening["question"]
                 except Exception as exc:

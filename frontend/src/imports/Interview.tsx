@@ -223,7 +223,18 @@ export default function Interview({ navigate }: Props) {
     armWaitTimer(CONNECT_TIMEOUT_MS, 'Could not connect to the interview server. Please try again.')
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({ event: 'start', role }))
+      const weekStr = localStorage.getItem('active_roadmap_week')
+      const topicStr = localStorage.getItem('active_roadmap_topic')
+      const weekVal = weekStr ? parseInt(weekStr) : 1
+      ws.send(JSON.stringify({
+        event: 'start',
+        role,
+        week: weekVal,
+        topic: topicStr || undefined
+      }))
+      localStorage.removeItem('active_roadmap_week')
+      localStorage.removeItem('active_roadmap_topic')
+      
       // First question has no model call behind it, so the same short
       // connect budget applies to it too.
       armWaitTimer(CONNECT_TIMEOUT_MS, 'The interview server accepted the connection but never sent a question. Please try again.')

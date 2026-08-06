@@ -101,7 +101,11 @@ export default function Roadmap({ navigate }: Props) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ fontSize: 11, color: '#7A6B63' }}>{step.estimated_hours}h</span>
                       <button
-                        onClick={() => navigate('interview')}
+                        onClick={() => {
+                          localStorage.setItem('active_roadmap_week', step.step_number.toString())
+                          localStorage.setItem('active_roadmap_topic', step.title)
+                          navigate('interview')
+                        }}
                         style={{ background: 'none', border: '1px solid rgba(181,80,46,0.25)', borderRadius: 8, cursor: 'pointer', padding: '4px 10px', fontSize: 11, fontWeight: 600, color: '#B5502E', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
                       >
                         Practice

@@ -648,6 +648,8 @@ class GraniteClient:
                 return "Your proposed solution covers the happy path. But how does this scale if your payload volume or transaction frequency increases 10x? What latency bottlenecks do you anticipate?"
         else:
             role = "Software Engineer"
+            week = 1
+            topic = ""
             for line in prompt.splitlines():
                 if "role:" in line.lower():
                     parts = prompt.split(line)
@@ -655,23 +657,103 @@ class GraniteClient:
                         lines_after = parts[1].strip().splitlines()
                         if lines_after:
                             role = lines_after[0].strip()
-                    break
+                elif "week:" in line.lower():
+                    parts = line.split(":", 1)
+                    if len(parts) > 1 and parts[1].strip().isdigit():
+                        week = int(parts[1].strip())
+                elif "topic:" in line.lower():
+                    parts = line.split(":", 1)
+                    if len(parts) > 1:
+                        topic = parts[1].strip()
 
             role_lower = role.lower()
+            topic_lower = topic.lower()
+            difficulty = "Easy" if week <= 2 else "Medium" if week <= 5 else "Hard"
+
+            q = f"Welcome to your {role} mock interview! This is a {difficulty} question for Week {week} on the topic of {topic or 'Technical Foundations'}. Can you explain a challenging problem you solved in this domain and the trade-offs you considered?"
+
             if "backend" in role_lower:
-                return "Welcome to your Backend Engineer mock interview! Let's start with system architecture. Could you describe how you would design a highly available, read-heavy database layer and explain your partitioning or caching strategy?"
+                if "api design" in topic_lower or "rest" in topic_lower:
+                    if difficulty == "Easy":
+                        q = "Welcome to your Backend mock interview! Let's start with basic REST concepts. Could you explain the difference between PUT and PATCH, and what HTTP status codes you would return for successful resource creation vs validation failure?"
+                    elif difficulty == "Medium":
+                        q = "Welcome to your Backend mock interview! Let's talk about API design. How would you design a scalable API pagination strategy (offset vs cursor-based) for a high-throughput endpoint?"
+                    else:
+                        q = "Welcome to your Backend mock interview! Let's discuss advanced API architectures. How would you implement rate limiting (token bucket vs sliding window) across a distributed cluster of API instances?"
+                elif "database" in topic_lower or "indexing" in topic_lower:
+                    if difficulty == "Easy":
+                        q = "Welcome to your Backend mock interview! Let's start with database basics. What is database normalization, and when would you choose to denormalize your schemas?"
+                    elif difficulty == "Medium":
+                        q = "Welcome to your Backend mock interview! Let's discuss indexes. How do composite indexes work in SQL databases, and how does the column order affect query execution?"
+                    else:
+                        q = "Welcome to your Backend mock interview! Let's look at database scaling. How do you design write-heavy database sharding keys, and how do you handle cross-shard query joins?"
+                elif "caching" in topic_lower or "cache" in topic_lower:
+                    if difficulty == "Easy":
+                        q = "Welcome to your Backend mock interview! Let's talk about caching. What is the difference between local memory caching and distributed caching like Redis?"
+                    elif difficulty == "Medium":
+                        q = "Welcome to your Backend mock interview! Let's discuss caching strategies. Could you explain the cache-aside pattern and how you choose key TTL values?"
+                    else:
+                        q = "Welcome to your Backend mock interview! Let's look at cache stampedes. How do you design high-throughput cache invalidation systems and prevent database crashes when a hot key expires?"
+                elif "concurrency" in topic_lower or "thread" in topic_lower:
+                    if difficulty == "Easy":
+                        q = "Welcome to your Backend mock interview! Let's talk about execution threads. What is the difference between CPU-bound and I/O-bound tasks in a server context?"
+                    elif difficulty == "Medium":
+                        q = "Welcome to your Backend mock interview! Let's discuss async event loops. How does single-threaded concurrency (like Node.js or Python asyncio) handle thousands of concurrent requests?"
+                    else:
+                        q = "Welcome to your Backend mock interview! Let's look at deadlocks. How do database locks (optimistic vs pessimistic concurrency control) affect throughput, and how do you resolve circular deadlock dependencies?"
+                elif "message queue" in topic_lower or "event-driven" in topic_lower:
+                    if difficulty == "Easy":
+                        q = "Welcome to your Backend mock interview! Let's start with message exchanges. What is the main difference between synchronous HTTP calls and asynchronous message queues?"
+                    elif difficulty == "Medium":
+                        q = "Welcome to your Backend mock interview! Let's talk about pub-sub. How do consumer groups in message brokers like Kafka distribute payloads while maintaining order?"
+                    else:
+                        q = "Welcome to your Backend mock interview! Let's look at delivery guarantees. How do you design an idempotent consumer that processes messages exactly-once even under message duplication?"
+                elif "microservices" in topic_lower or "transaction" in topic_lower:
+                    if difficulty == "Easy":
+                        q = "Welcome to your Backend mock interview! Let's start with service structures. What is the difference between monolithic architecture and microservices?"
+                    elif difficulty == "Medium":
+                        q = "Welcome to your Backend mock interview! Let's talk about distributed transactions. How does the Saga pattern manage data consistency without using heavy two-phase commits?"
+                    else:
+                        q = "Welcome to your Backend mock interview! Let's look at network resilience. How do circuit breakers and retry loops prevent cascading failures across service dependencies?"
+                elif "container" in topic_lower or "orchestration" in topic_lower:
+                    if difficulty == "Easy":
+                        q = "Welcome to your Backend mock interview! Let's start with containerization. What is a Docker container, and how is it different from a virtual machine?"
+                    elif difficulty == "Medium":
+                        q = "Welcome to your Backend mock interview! Let's discuss Kubernetes. How does service discovery work inside a K8s cluster, and what is the role of a Pod?"
+                    else:
+                        q = "Welcome to your Backend mock interview! Let's look at orchestration scaling. How do you configure rolling updates and liveness/readiness probes to guarantee zero-downtime deployments?"
+                elif "high availability" in topic_lower or "reliability" in topic_lower:
+                    if difficulty == "Easy":
+                        q = "Welcome to your Backend mock interview! Let's start with uptime basics. What does 99.9% availability mean in practice, and how do load balancers contribute to it?"
+                    elif difficulty == "Medium":
+                        q = "Welcome to your Backend mock interview! Let's discuss failovers. How do you configure active-passive database replication systems to handle automatic backup routing?"
+                    else:
+                        q = "Welcome to your Backend mock interview! Let's look at disaster recovery. How do you design a multi-region active-active architecture that resolves write conflicts (e.g. vector clocks) during split-brain events?"
+
             elif "frontend" in role_lower or "ui" in role_lower or "react" in role_lower:
-                return "Welcome to your Frontend Engineer mock interview! Let's discuss performance and UX. Could you describe how you optimize a complex, data-heavy web application to achieve a fast initial load and sub-second interaction times?"
-            elif "data scientist" in role_lower or "machine learning" in role_lower or "ds" in role_lower or "ml" in role_lower:
-                return "Welcome to your Data Scientist mock interview! Let's start with model deployment. Could you explain how you design validation sets to prevent data leakage in time-series forecasting, and how you evaluate model drift in production?"
-            elif "devops" in role_lower or "infrastructure" in role_lower or "sre" in role_lower:
-                return "Welcome to your DevOps/SRE mock interview! Let's talk about infrastructure reliability. How would you design a multi-region blue-green deployment pipeline that guarantees zero downtime and provides automatic rollback in case of failure?"
-            elif "ios" in role_lower or "mobile" in role_lower or "android" in role_lower:
-                return "Welcome to your Mobile Engineer mock interview! Let's discuss mobile architecture. Could you explain the differences between MVC, MVVM, and VIPER, and how you prevent memory leaks when handling async network calls?"
-            elif "manager" in role_lower or "lead" in role_lower:
-                return "Welcome to your Engineering Manager mock interview! Let's start with team dynamics and project delivery. How do you handle conflict resolution within a cross-functional team, and how do you align engineering roadmaps with business objectives?"
-            else:
-                return f"Welcome to your {role} mock interview! Let's start by discussing your experience. Could you walk me through a challenging technical problem you solved recently in this domain and the trade-offs you had to make?"
+                if "js/ts" in topic_lower or "javascript" in topic_lower:
+                    if difficulty == "Easy":
+                        q = "Welcome to your Frontend mock interview! Let's start with language basics. What is the difference between let, const, and var declarations in JavaScript?"
+                    elif difficulty == "Medium":
+                        q = "Welcome to your Frontend mock interview! Let's discuss TS types. What is the difference between an interface and a type alias, and when should you use utility types like Pick or Omit?"
+                    else:
+                        q = "Welcome to your Frontend mock interview! Let's look at event handling. How does the JS event loop orchestrate the call stack, microtask queue, and macrotask queue?"
+                elif "react" in topic_lower or "render" in topic_lower:
+                    if difficulty == "Easy":
+                        q = "Welcome to your Frontend mock interview! Let's start with React basics. What is the virtual DOM, and how does React use it to optimize updates?"
+                    elif difficulty == "Medium":
+                        q = "Welcome to your Frontend mock interview! Let's discuss rendering. How do you prevent unnecessary component re-renders when passing callbacks down to child components?"
+                    else:
+                        q = "Welcome to your Frontend mock interview! Let's look at React Fiber. How does the Fiber reconciler pause and resume work during concurrent rendering phases?"
+                elif "performance" in topic_lower or "splitting" in topic_lower:
+                    if difficulty == "Easy":
+                        q = "Welcome to your Frontend mock interview! Let's start with performance. What are the Core Web Vitals, and why is LCP (Largest Contentful Paint) important?"
+                    elif difficulty == "Medium":
+                        q = "Welcome to your Frontend mock interview! Let's discuss splitting. How does lazy loading with dynamic imports improve the initial load time of a web page?"
+                    else:
+                        q = "Welcome to your Frontend mock interview! Let's look at critical rendering path optimization. How do you structure CSS, fonts, and JS delivery to eliminate layout shifts (CLS)?"
+
+            return q
 
     def _get_watsonx_model(self):
         if self._watsonx_model is not None:
