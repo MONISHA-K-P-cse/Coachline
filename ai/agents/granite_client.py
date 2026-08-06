@@ -262,11 +262,73 @@ class GraniteClient:
             if match:
                 weeks = int(match.group(1))
 
+            # Parse role from prompt if present
+            role = "software engineer"
+            for line in prompt.splitlines():
+                if "role:" in line.lower() or "target role" in line.lower():
+                    role = line.split(":", 1)[1].strip().lower()
+                    break
+
+            # Define topic progression maps
+            syllabus_backend = [
+                ("API Design & RESTful Standards", "Master REST constraints, status codes, query filtering, pagination, and OpenAPI specifications."),
+                ("Database Scaling & Indexes", "Deep dive into composite indexes, query optimization, sharding, replication, and SQL vs NoSQL trade-offs."),
+                ("Caching Strategies & Stampedes", "Master Redis cache-aside pattern, eviction policies (LRU, LFU), TTL strategies, and cache stampede mitigations."),
+                ("Concurrency & Thread Pools", "Understand CPU-bound vs I/O-bound tasks, multithreading, asyncio event loops, locks, and thread pool scaling."),
+                ("Message Queues & Event-Driven Design", "Integrate RabbitMQ/Kafka, pub-sub architectures, consumer groups, message durability, and backpressure."),
+                ("Microservices & Distributed Transactions", "Understand API gateways, service discovery, saga pattern, two-phase commits, and circuit breakers."),
+                ("Containerization & Orchestration", "Learn multi-stage Docker builds, resource constraints, Kubernetes pods, services, and config maps."),
+                ("High Availability & Reliability Engineering", "Study rate-limiting, load balancers, database failover, health checks, and monitoring with Prometheus/Grafana.")
+            ]
+
+            syllabus_frontend = [
+                ("Advanced JS/TS & Clean Code", "Deep dive into JS closures, prototype chains, event loop, TS advanced types (mapped, conditional, utility)."),
+                ("React Architecture & Render Lifecycle", "Understand Virtual DOM, React Fiber reconciler, component mounts, hooks rendering patterns, and concurrent mode."),
+                ("Web Performance & Code Splitting", "Optimize Core Web Vitals, critical rendering path, lazy loading, dynamic import(), and bundler optimizations."),
+                ("State Management & Data Flow", "Master local vs global states, React context, Zustand, Redux Toolkit, and atomic states like Recoil."),
+                ("Browser APIs & Security", "Learn about service workers, offline storage (IndexedDB), CORS policy, XSS, CSRF, and CSP headers."),
+                ("CSS layouts & Responsive Design", "Master Flexbox, CSS Grid, container queries, Tailwind utility classes, and CSS-in-JS variables."),
+                ("Testing & CI/CD for Frontend", "Write unit tests with Vitest, component tests with Testing Library, and E2E automation with Playwright."),
+                ("SSR, SSG & Modern Frameworks", "Master Next.js App Router, server components, static generation, dynamic hydration, and edge middleware.")
+            ]
+
+            syllabus_ds = [
+                ("Feature Engineering & Analytics", "Clean datasets, impute missing values, scale variables, and run exploratory data analyses."),
+                ("Supervised & Unsupervised Learning", "Compare linear/logistic regression, tree-based models, clustering techniques, and metrics like F1 and ROC-AUC."),
+                ("Deep Learning & Frameworks", "Build neural networks using PyTorch/TensorFlow, optimize weights, prevent overfitting, and use transfer learning."),
+                ("LLMs & NLP Tuning", "Learn transformer architectures, tokenize text corpora, vector embeddings, semantic search, and prompt engineering."),
+                ("Model Deployment & APIs", "Containerize machine learning models using Docker, build FastAPI endpoints, and serve inference results."),
+                ("Big Data & Cloud Pipelines", "Write PySpark data transformations, build ETL pipelines, and query datasets using Snowflake/Redshift."),
+                ("A/B Testing & Experimentation", "Formulate null hypotheses, calculate sample sizes, run power analyses, and evaluate statistical significance."),
+                ("MLOps & Lifecycle Monitoring", "Set up MLflow model registries, track experiments, detect data drift, and automate pipeline trigger schedules.")
+            ]
+
+            syllabus_default = [
+                ("Computer Science Fundamentals", "Review Big O complexity, dynamic programming, sorting/searching, and basic memory management."),
+                ("Data Structures in Practice", "Master arrays, hash maps, linked lists, trees, and graphs, focusing on traversal algorithms."),
+                ("Design Patterns & Architecture", "Study creational, structural, and behavioral patterns, alongside SOLID engineering principles."),
+                ("System Design Basics", "Understand vertical vs horizontal scaling, load balancing, DNS routing, and monolithic vs microservices."),
+                ("Database & Transactions", "Master ACID guarantees, isolation levels, database normalization, and query performance optimizations."),
+                ("Networking & Protocols", "Deep dive into HTTP/HTTPS, TCP/IP, websockets, DNS lookups, and load balancer configurations."),
+                ("CI/CD & Version Control", "Master advanced Git workflows (rebase, cherry-pick), automation pipelines, and infrastructure deployment."),
+                ("Security & Reliability", "Learn about encryption, HTTPS, OAuth2 authorization flows, rate limiting, and system failure recovery.")
+            ]
+
+            active_syllabus = syllabus_default
+            if "backend" in role:
+                active_syllabus = syllabus_backend
+            elif "frontend" in role or "ui" in role or "react" in role:
+                active_syllabus = syllabus_frontend
+            elif "data scientist" in role or "machine learning" in role or "ds" in role or "ml" in role:
+                active_syllabus = syllabus_ds
+
             steps = []
             for i in range(1, weeks + 1):
+                title, desc = active_syllabus[(i - 1) % len(active_syllabus)]
                 steps.append({
-                    "title": f"Week {i}: Advanced Technical Foundations",
-                    "description": f"Focus on mastering core concepts, architectural trade-offs, and practical implementations related to your target role.",
+                    "step_number": i,
+                    "title": title,
+                    "description": desc,
                     "estimated_hours": 15
                 })
 

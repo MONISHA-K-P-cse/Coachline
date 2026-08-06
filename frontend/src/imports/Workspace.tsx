@@ -136,6 +136,71 @@ export default function Workspace({ navigate }: Props) {
     loadAll().finally(() => setLoading(false))
   }, [loadAll])
 
+  const renderFormattedResume = (text: string) => {
+    return text.split('\n').map((line, idx) => {
+      const trimmed = line.trim();
+      if (!trimmed) return <div key={idx} style={{ height: '0.8em' }} />;
+      
+      if (trimmed.startsWith('###') || trimmed.startsWith('##') || trimmed.startsWith('#')) {
+        const cleanHeading = trimmed.replace(/[#*]/g, '').trim();
+        return (
+          <h3 key={idx} style={{
+            fontFamily: "'Fraunces', Georgia, serif",
+            fontSize: '15px',
+            fontWeight: 700,
+            color: '#B5502E',
+            marginTop: '18px',
+            marginBottom: '8px',
+            borderBottom: '1.5px solid rgba(181,80,46,0.15)',
+            paddingBottom: '3px'
+          }}>
+            {cleanHeading}
+          </h3>
+        );
+      }
+      
+      if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
+        const cleanHeading = trimmed.replace(/\*/g, '').trim();
+        return (
+          <h4 key={idx} style={{
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontSize: '13px',
+            fontWeight: 700,
+            color: '#1C1917',
+            marginTop: '12px',
+            marginBottom: '4px'
+          }}>
+            {cleanHeading}
+          </h4>
+        );
+      }
+
+      if (trimmed.startsWith('-') || trimmed.startsWith('*')) {
+        const cleanBullet = trimmed.substring(1).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').trim();
+        return (
+          <li key={idx} style={{
+            fontSize: '12.5px',
+            color: '#3C302A',
+            lineHeight: '1.6',
+            marginLeft: '14px',
+            marginBottom: '4px',
+            listStyleType: 'disc'
+          }} dangerouslySetInnerHTML={{ __html: cleanBullet }} />
+        );
+      }
+      
+      const formattedLine = trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      return (
+        <p key={idx} style={{
+          fontSize: '12.5px',
+          color: '#4B3D37',
+          lineHeight: '1.6',
+          margin: '3px 0'
+        }} dangerouslySetInnerHTML={{ __html: formattedLine }} />
+      );
+    });
+  };
+
   const latestResume = resumes[0]
 
   const handleImproveResume = async () => {
@@ -518,22 +583,21 @@ export default function Workspace({ navigate }: Props) {
                 </div>
 
                 <div>
-                  <h4 style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#15803d', margin: '0 0 8px' }}>
-                    Improved Content
+                  <h4 style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B5502E', margin: '0 0 8px' }}>
+                    Optimized Resume Document
                   </h4>
                   <div style={{
-                    border: '1.5px solid rgba(21,128,61,0.15)',
+                    border: '1.5px solid rgba(181,80,46,0.15)',
                     borderRadius: 12,
-                    padding: 16,
+                    padding: '24px 28px',
                     height: 280,
                     overflowY: 'auto',
-                    fontSize: 12.5,
-                    color: '#1C1917',
-                    lineHeight: 1.6,
-                    whiteSpace: 'pre-wrap',
-                    background: 'rgba(21,128,61,0.02)'
+                    background: '#FFFFFF',
+                    boxShadow: '0 4px 18px rgba(181,80,46,0.05)',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    textAlign: 'left'
                   }}>
-                    {improvedResume.improved_text}
+                    {renderFormattedResume(improvedResume.improved_text)}
                   </div>
                 </div>
               </div>

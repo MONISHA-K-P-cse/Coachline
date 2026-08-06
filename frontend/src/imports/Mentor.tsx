@@ -29,7 +29,35 @@ function brainArc(x1: number, y1: number, x2: number, y2: number) {
   return `M ${x1} ${y1} Q ${mx - dy * 0.15} ${my + dx * 0.15} ${x2} ${y2}`
 }
 
-function AIMentorBrain({ thinking, voiceEnabled, onToggleVoice }: { thinking: boolean; voiceEnabled: boolean; onToggleVoice: () => void }) {
+function AIMentorBrain({
+  thinking,
+  voiceEnabled,
+  onToggleVoice,
+  showVoiceSettings,
+  onToggleSettings,
+  availableVoices,
+  selectedVoiceName,
+  onSelectVoice,
+  voicePitch,
+  onPitchChange,
+  voiceRate,
+  onRateChange,
+  currentlySpeakingId
+}: {
+  thinking: boolean
+  voiceEnabled: boolean
+  onToggleVoice: () => void
+  showVoiceSettings: boolean
+  onToggleSettings: () => void
+  availableVoices: SpeechSynthesisVoice[]
+  selectedVoiceName: string | null
+  onSelectVoice: (name: string) => void
+  voicePitch: number
+  onPitchChange: (val: number) => void
+  voiceRate: number
+  onRateChange: (val: number) => void
+  currentlySpeakingId: number | null
+}) {
   const nodeMap = Object.fromEntries(BRAIN_NODES.map((n) => [n.id, n]))
   return (
     <div style={{ background: 'linear-gradient(160deg, #1C1917 0%, #261A13 100%)', borderRadius: '18px 18px 0 0', padding: '14px 20px 10px', position: 'relative', overflow: 'hidden' }}>
@@ -82,33 +110,146 @@ function AIMentorBrain({ thinking, voiceEnabled, onToggleVoice }: { thinking: bo
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 15, fontWeight: 700, color: '#FAFAF8' }}>Your Mentor</div>
               {thinking && <span style={{ fontSize: 10, color: '#E0A458', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Thinking</span>}
+              {currentlySpeakingId !== null && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2.5, height: 12, marginLeft: 8 }}>
+                  <style>{`
+                    @keyframes speak-bar-bounce {
+                      0%, 100% { height: 4px; }
+                      50% { height: 14px; }
+                    }
+                  `}</style>
+                  <div style={{ width: 2.5, height: 8, borderRadius: 1, backgroundColor: '#E0A458', animation: 'speak-bar-bounce 0.6s infinite ease-in-out', animationDelay: '0s' }} />
+                  <div style={{ width: 2.5, height: 8, borderRadius: 1, backgroundColor: '#E0A458', animation: 'speak-bar-bounce 0.6s infinite ease-in-out', animationDelay: '0.15s' }} />
+                  <div style={{ width: 2.5, height: 8, borderRadius: 1, backgroundColor: '#E0A458', animation: 'speak-bar-bounce 0.6s infinite ease-in-out', animationDelay: '0.3s' }} />
+                </div>
+              )}
             </div>
             <div style={{ fontSize: 11, color: 'rgba(250,250,248,0.55)', lineHeight: 1.5 }}>
               Grounded in interview prep reference material via RAG retrieval.
             </div>
           </div>
-          <button
-            onClick={onToggleVoice}
-            style={{
-              background: voiceEnabled ? 'rgba(181,80,46,0.25)' : 'rgba(255,255,255,0.08)',
-              border: voiceEnabled ? '1.5px solid #B5502E' : '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 100,
-              cursor: 'pointer',
-              padding: '6px 14px',
-              fontSize: 11.5,
-              fontWeight: 700,
-              color: '#FAFAF8',
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <span>{voiceEnabled ? '🔊' : '🔇'}</span> Voice Mode: {voiceEnabled ? 'ON' : 'OFF'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={onToggleVoice}
+              style={{
+                background: voiceEnabled ? 'rgba(181,80,46,0.25)' : 'rgba(255,255,255,0.08)',
+                border: voiceEnabled ? '1.5px solid #B5502E' : '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 100,
+                cursor: 'pointer',
+                padding: '6px 14px',
+                fontSize: 11.5,
+                fontWeight: 700,
+                color: '#FAFAF8',
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span>{voiceEnabled ? '🔊' : '🔇'}</span> {voiceEnabled ? 'Voice Active' : 'Mute'}
+            </button>
+            <button
+              onClick={onToggleSettings}
+              style={{
+                background: showVoiceSettings ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                width: 32,
+                height: 32,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#FAFAF8',
+                transition: 'all 0.15s ease',
+                fontSize: 14
+              }}
+              title="Voice Settings"
+            >
+              ⚙️
+            </button>
+          </div>
         </div>
       </div>
+
+      {showVoiceSettings && (
+        <div style={{
+          marginTop: 14,
+          padding: 16,
+          background: 'rgba(255,255,255,0.04)',
+          borderRadius: 12,
+          border: '1.5px solid rgba(255,255,255,0.08)',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gap: 16,
+          animation: 'fade-in 0.2s ease'
+        }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 10, color: 'rgba(250,250,248,0.6)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6 }}>Voice Speaker</label>
+            <select
+              value={selectedVoiceName || ''}
+              onChange={(e) => onSelectVoice(e.target.value)}
+              style={{
+                width: '100%',
+                background: '#1C1917',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: 6,
+                color: '#FAFAF8',
+                fontSize: 11.5,
+                padding: '6px 8px',
+                outline: 'none',
+                fontFamily: "'Plus Jakarta Sans', sans-serif"
+              }}
+            >
+              <option value="">Default Female Voice</option>
+              {availableVoices.map((v) => (
+                <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(250,250,248,0.6)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6 }}>
+              <span>Speed (Rate)</span>
+              <span>{voiceRate}x</span>
+            </label>
+            <input
+              type="range"
+              min="0.6"
+              max="1.8"
+              step="0.1"
+              value={voiceRate}
+              onChange={(e) => onRateChange(parseFloat(e.target.value))}
+              style={{
+                width: '100%',
+                accentColor: '#B5502E',
+                cursor: 'pointer'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(250,250,248,0.6)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6 }}>
+              <span>Pitch</span>
+              <span>{voicePitch}x</span>
+            </label>
+            <input
+              type="range"
+              min="0.5"
+              max="1.5"
+              step="0.1"
+              value={voicePitch}
+              onChange={(e) => onPitchChange(parseFloat(e.target.value))}
+              style={{
+                width: '100%',
+                accentColor: '#B5502E',
+                cursor: 'pointer'
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -149,7 +290,7 @@ function groupMessages(rawMessages: api.MentorMessage[]): SessionGroup[] {
   return groups
 }
 
-function speakText(text: string, onEnd: () => void) {
+function speakText(text: string, voiceName: string | null, pitch: number, rate: number, onEnd: () => void) {
   if (!window.speechSynthesis) {
     onEnd()
     return
@@ -159,14 +300,19 @@ function speakText(text: string, onEnd: () => void) {
   const utterance = new SpeechSynthesisUtterance(text)
   const voices = window.speechSynthesis.getVoices()
   
-  const femaleVoiceNames = ["samantha", "karen", "moira", "tessa", "zira", "google us english", "microsoft zira", "female", "en-us"]
-  
   let selectedVoice = null
-  for (const name of femaleVoiceNames) {
-    const found = voices.find(v => v.name.toLowerCase().includes(name) && v.lang.startsWith('en'))
-    if (found) {
-      selectedVoice = found
-      break
+  if (voiceName) {
+    selectedVoice = voices.find(v => v.name === voiceName)
+  }
+  
+  if (!selectedVoice) {
+    const femaleVoiceNames = ["samantha", "karen", "moira", "tessa", "zira", "google us english", "microsoft zira", "female", "en-us"]
+    for (const name of femaleVoiceNames) {
+      const found = voices.find(v => v.name.toLowerCase().includes(name) && v.lang.startsWith('en'))
+      if (found) {
+        selectedVoice = found
+        break
+      }
     }
   }
   
@@ -177,6 +323,9 @@ function speakText(text: string, onEnd: () => void) {
   if (selectedVoice) {
     utterance.voice = selectedVoice
   }
+
+  utterance.pitch = pitch
+  utterance.rate = rate
 
   utterance.onend = onEnd
   utterance.onerror = onEnd
@@ -195,6 +344,11 @@ export default function Mentor({ navigate }: Props) {
   const [currentlySpeakingId, setCurrentlySpeakingId] = useState<number | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
   const [voiceEnabled, setVoiceEnabled] = useState(false)
+  const [selectedVoiceName, setSelectedVoiceName] = useState<string | null>(null)
+  const [voicePitch, setVoicePitch] = useState<number>(1.0)
+  const [voiceRate, setVoiceRate] = useState<number>(1.0)
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([])
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const load = async () => {
@@ -214,6 +368,14 @@ export default function Mentor({ navigate }: Props) {
 
   useEffect(() => {
     load()
+    if (window.speechSynthesis) {
+      const updateVoices = () => {
+        const list = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'))
+        setAvailableVoices(list)
+      }
+      updateVoices()
+      window.speechSynthesis.onvoiceschanged = updateVoices
+    }
     return () => {
       if (window.speechSynthesis) window.speechSynthesis.cancel()
     }
@@ -299,7 +461,7 @@ export default function Mentor({ navigate }: Props) {
       setCurrentlySpeakingId(null)
     } else {
       setCurrentlySpeakingId(id)
-      speakText(text, () => {
+      speakText(text, selectedVoiceName, voicePitch, voiceRate, () => {
         setCurrentlySpeakingId(null)
       })
     }
@@ -384,7 +546,21 @@ export default function Mentor({ navigate }: Props) {
         {/* Chat Area */}
         <div style={{ display: 'flex', flexDirection: 'column', padding: '0 24px', height: '100%', overflow: 'hidden' }}>
           <div style={{ flexShrink: 0, marginTop: 20, borderRadius: 18, overflow: 'hidden', border: '1.5px solid rgba(181,80,46,0.12)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-            <AIMentorBrain thinking={thinking} voiceEnabled={voiceEnabled} onToggleVoice={() => setVoiceEnabled(!voiceEnabled)} />
+            <AIMentorBrain
+              thinking={thinking}
+              voiceEnabled={voiceEnabled}
+              onToggleVoice={() => setVoiceEnabled(!voiceEnabled)}
+              showVoiceSettings={showVoiceSettings}
+              onToggleSettings={() => setShowVoiceSettings(!showVoiceSettings)}
+              availableVoices={availableVoices}
+              selectedVoiceName={selectedVoiceName}
+              onSelectVoice={setSelectedVoiceName}
+              voicePitch={voicePitch}
+              onPitchChange={setVoicePitch}
+              voiceRate={voiceRate}
+              onRateChange={setVoiceRate}
+              currentlySpeakingId={currentlySpeakingId}
+            />
             <div style={{ borderTop: '1px solid rgba(181,80,46,0.10)' }} />
           </div>
 
