@@ -119,6 +119,33 @@ export default function Workspace({ navigate }: Props) {
   const [improvedResume, setImprovedResume] = useState<api.ResumeImprovementResponse | null>(null)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
 
+  const [bobChallengeId, setBobChallengeId] = useState('sql_injection')
+  const [bobCode, setBobCode] = useState('def get_user_data(username):\n    query = f"SELECT * FROM users WHERE username = \'{username}\'"\n    return db.execute(query)')
+  const [bobAuditing, setBobAuditing] = useState(false)
+  const [bobAuditResult, setBobAuditResult] = useState<api.BobAuditResponse | null>(null)
+
+  useEffect(() => {
+    if (bobChallengeId === 'sql_injection') {
+      setBobCode('def get_user_data(username):\n    query = f"SELECT * FROM users WHERE username = \'{username}\'"\n    return db.execute(query)')
+    } else if (bobChallengeId === 'concurrency_race') {
+      setBobCode('counter = 0\ndef increment_counter():\n    global counter\n    current = counter\n    time.sleep(0.01)\n    counter = current + 1')
+    } else if (bobChallengeId === 'cors_security') {
+      setBobCode('app.use((req, res, next) => {\n    res.setHeader(\'Access-Control-Allow-Origin\', \'*\');\n    res.setHeader(\'Access-Control-Allow-Methods\', \'GET, POST\');\n    next();\n});')
+    }
+  }, [bobChallengeId])
+
+  const handleBobAudit = async () => {
+    setBobAuditing(true)
+    try {
+      const res = await api.auditCode(bobCode, bobChallengeId)
+      setBobAuditResult(res)
+    } catch (err) {
+      alert('IBM Bob Code Audit failed. Please try again.')
+    } finally {
+      setBobAuditing(false)
+    }
+  }
+
   const loadAll = useCallback(async () => {
     const [d, r, s, tm] = await Promise.all([
       api.getDashboard(),
@@ -467,6 +494,139 @@ export default function Workspace({ navigate }: Props) {
                 </div>
               )}
             </div>
+
+            {/* IBM Bob Code Auditor */}
+            <div style={{ background: '#FFFFFF', borderRadius: 18, border: '1.5px solid rgba(181,80,46,0.12)', padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+                <div>
+                  <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 18, fontWeight: 700, color: '#1C1917', margin: 0 }}>IBM Bob Code Auditor</h2>
+                  <p style={{ fontSize: 12, color: '#7A6B63', marginTop: 4, margin: 0 }}>Select a coding challenge and run an agentic vulnerability review.</p>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <select
+                    value={bobChallengeId}
+                    onChange={(e) => setBobChallengeId(e.target.value)}
+                    style={{
+                      background: '#FAFAF8',
+                      border: '1px solid rgba(181,80,46,0.2)',
+                      borderRadius: 8,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#4B3D37',
+                      padding: '4px 8px',
+                      fontFamily: "'Plus Jakarta Sans', sans-serif"
+                    }}
+                  >
+                    <option value="sql_injection">SQL Injection Challenge</option>
+                    <option value="concurrency_race">Race Condition Challenge</option>
+                    <option value="cors_security">CORS Wildcard Challenge</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Code Editor Panel */}
+              <div style={{ position: 'relative', background: '#1C1917', borderRadius: 12, border: '1.5px solid rgba(255,255,255,0.08)', overflow: 'hidden', marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#261A13', padding: '8px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#E0A458' }}>Source Code Editor</span>
+                  <span style={{ fontSize: 11, color: 'rgba(250,250,248,0.5)' }}>Python / JavaScript</span>
+                </div>
+                <textarea
+                  value={bobCode}
+                  onChange={(e) => setBobCode(e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: 120,
+                    background: 'none',
+                    border: 'none',
+                    outline: 'none',
+                    color: '#A7F3D0',
+                    fontFamily: "'Courier New', Courier, monospace",
+                    fontSize: 12,
+                    padding: 16,
+                    resize: 'none',
+                    lineHeight: 1.5
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginBottom: bobAuditResult ? 20 : 0 }}>
+                <button
+                  onClick={handleBobAudit}
+                  disabled={bobAuditing}
+                  style={{
+                    background: 'linear-gradient(135deg, #B5502E, #E0A458)',
+                    border: 'none',
+                    cursor: bobAuditing ? 'not-allowed' : 'pointer',
+                    color: '#FAFAF8',
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    padding: '8px 18px',
+                    borderRadius: 100,
+                    fontFamily: "'Plus Jakarta Sans', sans-serif"
+                  }}
+                >
+                  {bobAuditing ? 'Bob is Planning & Auditing...' : '🚀 Audit with IBM Bob'}
+                </button>
+              </div>
+
+              {/* Audit Results Panel */}
+              {bobAuditResult && (
+                <div style={{ borderTop: '1px solid rgba(181,80,46,0.1)', paddingTop: 20 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: 16 }}>
+                    <div>
+                      <h4 style={{ fontSize: 11, fontWeight: 700, color: '#B5502E', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                        Bob's Multi-Step Plan
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {bobAuditResult.plan.map((stepStr, idx) => (
+                          <div key={idx} style={{ display: 'flex', gap: 8, fontSize: 12, color: '#4B3D37', lineHeight: 1.4 }}>
+                            <span style={{ color: '#B5502E', fontWeight: 700 }}>{idx + 1}.</span>
+                            <span>{stepStr}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 style={{ fontSize: 11, fontWeight: 700, color: '#B5502E', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                        Vulnerabilities Flagged
+                      </h4>
+                      {bobAuditResult.vulnerabilities.map((v, i) => (
+                        <div key={i} style={{ background: v.severity === 'High' ? 'rgba(220,38,38,0.06)' : 'rgba(245,158,11,0.06)', border: v.severity === 'High' ? '1px solid #DC2626' : '1px solid #F59E0B', borderRadius: 10, padding: 12, fontSize: 12 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, marginBottom: 4 }}>
+                            <span style={{ color: v.severity === 'High' ? '#DC2626' : '#D97706' }}>[{v.severity} Severity]</span>
+                            <span style={{ color: '#7A6B63' }}>Line {v.line}</span>
+                          </div>
+                          <div style={{ color: '#1C1917', lineHeight: 1.4, marginBottom: 6 }}>{v.issue}</div>
+                          <div style={{ color: '#16A34A', fontWeight: 600 }}>💡 Fix: {v.fix}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 18 }}>
+                    <h4 style={{ fontSize: 11, fontWeight: 700, color: '#16A34A', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                      IBM Bob Refactored Code
+                    </h4>
+                    <pre style={{
+                      margin: 0,
+                      background: '#1C1917',
+                      borderRadius: 10,
+                      padding: 16,
+                      color: '#E0A458',
+                      fontFamily: "'Courier New', Courier, monospace",
+                      fontSize: 12,
+                      overflowX: 'auto',
+                      lineHeight: 1.5,
+                      textAlign: 'left'
+                    }}>
+                      {bobAuditResult.refactored_code}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
+
           </div>
 
           {/* Right sidebar */}

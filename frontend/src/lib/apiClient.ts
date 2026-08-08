@@ -386,3 +386,26 @@ export function clearMentorHistory(): Promise<void> {
 export function startNewMentorSession(): Promise<MentorMessage> {
   return request('/mentor/new-session', { method: 'POST' })
 }
+
+// ─── IBM Bob ──────────────────────────────────────────────────────────────────
+
+export interface BobVulnerabilityItem {
+  severity: string
+  line: number
+  issue: string
+  fix: string
+}
+
+export interface BobAuditResponse {
+  plan: string[]
+  vulnerabilities: BobVulnerabilityItem[]
+  refactored_code: string
+  score: number
+}
+
+export function auditCode(code: string, challengeId: string, language: string = 'python'): Promise<BobAuditResponse> {
+  return request('/bob/audit', {
+    method: 'POST',
+    body: JSON.stringify({ code, challenge_id: challengeId, language })
+  }, AGENT_TIMEOUT_MS)
+}

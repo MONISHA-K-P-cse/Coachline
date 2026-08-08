@@ -71,6 +71,64 @@ class GraniteClient:
     def _generate_mock(self, prompt: str) -> str:
         prompt_lower = prompt.lower()
 
+        # 1.1 IBM Bob Agent
+        if "ibm bob code auditor" in prompt_lower or "bob_audit" in prompt_lower:
+            challenge_id = "sql_injection"
+            for line in prompt.splitlines():
+                if "challenge id" in line.lower() or "challenge_id" in line.lower():
+                    challenge_id = line.split(":", 1)[1].strip()
+                    break
+            
+            import json
+            if "threading" in challenge_id or "concurrency" in challenge_id:
+                return json.dumps({
+                    "plan": [
+                        "Trace global counter reference access path.",
+                        "Detect lack of thread synchronization locks during context-switched operations.",
+                        "Formulate lock synchronization strategy to ensure atomic execution."
+                    ],
+                    "vulnerabilities": [{
+                        "severity": "Medium",
+                        "line": 4,
+                        "issue": "Race condition due to shared global state accessed without synchronization locks.",
+                        "fix": "Implement threading.Lock context manager."
+                    }],
+                    "refactored_code": "import threading\n\ncounter = 0\ncounter_lock = threading.Lock()\n\ndef increment_counter():\n    global counter\n    with counter_lock:\n        counter += 1",
+                    "score": 75
+                })
+            elif "cors" in challenge_id or "security" in challenge_id:
+                return json.dumps({
+                    "plan": [
+                        "Analyze Express middleware configuration settings.",
+                        "Identify wildcard CORS policy headers.",
+                        "Structure restricted whitelist configuration values."
+                    ],
+                    "vulnerabilities": [{
+                        "severity": "High",
+                        "line": 2,
+                        "issue": "Wildcard origin ('*') allows any site to make cross-origin calls, exposing sensitive APIs.",
+                        "fix": "Define an explicit list of trusted origin domains."
+                    }],
+                    "refactored_code": "const allowedOrigins = ['https://trusted.coachline.app'];\napp.use((req, res, next) => {\n    const origin = req.headers.origin;\n    if (allowedOrigins.includes(origin)) {\n        res.setHeader('Access-Control-Allow-Origin', origin);\n    }\n    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');\n    next();\n});",
+                    "score": 85
+                })
+            else:
+                return json.dumps({
+                    "plan": [
+                        "Analyze syntax tree of target database handler.",
+                        "Identify dynamic SQL string formatting pattern.",
+                        "Formulate plan to replace raw format interpolations with prepared statement parameters."
+                    ],
+                    "vulnerabilities": [{
+                        "severity": "High",
+                        "line": 2,
+                        "issue": "Direct string interpolation into database query allows SQL Injection.",
+                        "fix": "Use parameterized bind variables instead of f-strings."
+                    }],
+                    "refactored_code": "def get_user_data(username):\n    query = \"SELECT * FROM users WHERE username = :username\"\n    return db.execute(query, {\"username\": username})",
+                    "score": 90
+                })
+
         # 1. Mentor Agent
         if "career mentor" in prompt_lower or "candidate preparing for" in prompt_lower:
             msg = ""
