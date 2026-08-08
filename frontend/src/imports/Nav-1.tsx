@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react'
 import { useAuth } from '../lib/AuthContext'
+import { Sun, Moon, LogOut, Settings, Briefcase, Map, Video, BookOpen, Compass, MessageSquare, Sparkles } from 'lucide-react'
 
 type Page = 'landing' | 'login' | 'register' | 'onboarding' | 'workspace' | 'roadmap' | 'interview' | 'notes' | 'mastery' | 'mentor'
 
@@ -7,125 +9,97 @@ interface NavProps {
   navigate: (p: Page) => void
 }
 
-const appLinks: { label: string; page: Page }[] = [
-  { label: 'Workspace', page: 'workspace' },
-  { label: 'Roadmap', page: 'roadmap' },
-  { label: 'Interview', page: 'interview' },
-  { label: 'Notes', page: 'notes' },
-  { label: 'Mastery', page: 'mastery' },
-  { label: 'Mentor', page: 'mentor' },
+const appLinks = [
+  { label: 'Workspace', page: 'workspace' as Page, icon: Briefcase },
+  { label: 'Roadmap', page: 'roadmap' as Page, icon: Map },
+  { label: 'Interview', page: 'interview' as Page, icon: Video },
+  { label: 'Notes', page: 'notes' as Page, icon: BookOpen },
+  { label: 'Mastery', page: 'mastery' as Page, icon: Compass },
+  { label: 'Mentor', page: 'mentor' as Page, icon: MessageSquare },
 ]
 
 const AUTH_PAGES: Page[] = ['login', 'register', 'onboarding']
 
 export function Nav({ page, navigate }: NavProps) {
   const { user, logout } = useAuth()
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('theme') === 'dark' || 
+        (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    }
+    return false
+  })
+
+  useEffect(() => {
+    const root = document.documentElement
+    if (darkMode) {
+      root.classList.add('dark')
+      localStorage.setItem('theme', 'dark')
+    } else {
+      root.classList.remove('dark')
+      localStorage.setItem('theme', 'light')
+    }
+  }, [darkMode])
+
+  const toggleTheme = () => setDarkMode(!darkMode)
+
   const isLanding = page === 'landing'
   const isAuthPage = AUTH_PAGES.includes(page)
   const isApp = !isLanding && !isAuthPage
 
   return (
-    <nav
-      style={{
-        position: isLanding ? 'absolute' : 'relative',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 100,
-        padding: '0 32px',
-        height: 64,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderBottom: isApp ? '1px solid rgba(181,80,46,0.12)' : 'none',
-        backgroundColor: isApp ? 'rgba(250,250,248,0.97)' : 'transparent',
-        backdropFilter: isApp ? 'blur(12px)' : 'none',
-      }}
-    >
-      {/* Logo */}
+    <nav className={`w-full z-50 transition-all duration-300 ${
+      isLanding 
+        ? 'absolute top-0 left-0 right-0 bg-transparent py-6 px-6 md:px-12' 
+        : 'sticky top-0 bg-bg/75 backdrop-blur-md border-b border-border/80 px-6 py-3'
+    } flex items-center justify-between`}>
+      
+      {/* Brand Logo */}
       <button
         onClick={() => navigate('landing')}
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: 0,
-        }}
+        className="flex items-center gap-2.5 focus:outline-none cursor-pointer group"
       >
-        <span
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #B5502E 0%, #E0A458 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M7 2L11 7L7 12M3 7h8" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </span>
-        <span
-          style={{
-            fontFamily: "'Fraunces', Georgia, serif",
-            fontSize: 18,
-            fontWeight: 700,
-            color: '#1C1917',
-            letterSpacing: '-0.02em',
-          }}
-        >
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-rust to-accent flex items-center justify-center shadow-md shadow-rust/10 group-hover:scale-105 transition-transform duration-300">
+          <Sparkles className="w-4 h-4 text-white animate-pulse" />
+        </div>
+        <span className="font-display font-bold text-xl tracking-tight text-text hover:opacity-90 transition-opacity duration-150">
           Coachline
         </span>
       </button>
 
-      {/* App page links */}
+      {/* Navigation tabs */}
       {isApp && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {appLinks.map((link) => (
-            <button
-              key={link.page}
-              onClick={() => navigate(link.page)}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '6px 12px',
-                borderRadius: 8,
-                fontSize: 13.5,
-                fontWeight: page === link.page ? 600 : 400,
-                color: page === link.page ? '#B5502E' : '#4B3D37',
-                backgroundColor: page === link.page ? 'rgba(181,80,46,0.08)' : 'transparent',
-                fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-                transition: 'all 0.15s ease',
-              }}
-            >
-              {link.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-1 bg-panel-bg/40 p-1 rounded-xl border border-border/40 overflow-x-auto max-w-[280px] sm:max-w-none whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {appLinks.map((link) => {
+            const Icon = link.icon
+            const isActive = page === link.page
+            return (
+              <button
+                key={link.page}
+                onClick={() => navigate(link.page)}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold tracking-wide uppercase transition-all duration-200 cursor-pointer ${
+                  isActive
+                    ? 'bg-rust text-white shadow-sm shadow-rust/20'
+                    : 'text-text-muted hover:text-text hover:bg-border/20'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {link.label}
+              </button>
+            )
+          })}
         </div>
       )}
 
-      {/* Landing nav links */}
+      {/* Landing Link Items */}
       {isLanding && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+        <div className="hidden md:flex items-center gap-8">
           {['How it works', 'Features', 'Pricing'].map((label) => (
             <a
               key={label}
               href="#"
               onClick={(e) => e.preventDefault()}
-              style={{
-                fontSize: 14,
-                fontWeight: 500,
-                color: '#4B3D37',
-                textDecoration: 'none',
-                transition: 'color 0.15s ease',
-              }}
+              className="text-sm font-medium text-text-muted hover:text-text transition-colors duration-150"
             >
               {label}
             </a>
@@ -133,85 +107,52 @@ export function Nav({ page, navigate }: NavProps) {
         </div>
       )}
 
-      {/* Right action */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      {/* Action Area & Theme Toggle */}
+      <div className="flex items-center gap-3">
+        {/* Theme Toggle Button */}
+        <button
+          onClick={toggleTheme}
+          className="p-2.5 rounded-xl border border-border bg-card-bg hover:bg-border/20 text-text-muted hover:text-text transition-all duration-200 cursor-pointer"
+          aria-label="Toggle dark mode"
+        >
+          {darkMode ? <Sun className="w-4 h-4 text-accent" /> : <Moon className="w-4 h-4 text-text" />}
+        </button>
+
         {isLanding && !user && (
           <button
             onClick={() => navigate('login')}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 14,
-              fontWeight: 500,
-              color: '#4B3D37',
-              padding: '6px 12px',
-              fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-            }}
+            className="text-sm font-semibold text-text-muted hover:text-text px-4 py-2 transition-colors cursor-pointer"
           >
             Sign in
           </button>
         )}
+
         {isApp && user && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div className="flex items-center gap-2">
             <button
               onClick={() => navigate('onboarding')}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 13,
-                fontWeight: 500,
-                color: '#4B3D37',
-                padding: '6px 10px',
-                fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-              }}
+              className="flex items-center gap-1 text-xs font-semibold text-text-muted hover:text-text px-3 py-2 rounded-xl border border-border/40 hover:bg-border/10 transition-all cursor-pointer"
             >
-              Settings
+              <Settings className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Settings</span>
             </button>
             <button
-              onClick={() => { logout(); navigate('landing') }}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 13,
-                fontWeight: 500,
-                color: '#7A6B63',
-                padding: '6px 10px',
-                fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+              onClick={() => {
+                logout()
+                navigate('landing')
               }}
+              className="flex items-center gap-1 text-xs font-semibold text-text-muted/80 hover:text-red-500 px-3 py-2 rounded-xl hover:bg-red-500/5 transition-all cursor-pointer"
             >
-              Log out
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Log out</span>
             </button>
           </div>
         )}
+
         {!isAuthPage && (
           <button
             onClick={() => navigate(user ? 'workspace' : 'register')}
-            style={{
-              background: 'linear-gradient(135deg, #B5502E 0%, #C97350 100%)',
-              border: 'none',
-              cursor: 'pointer',
-              color: '#FAFAF8',
-              fontSize: 13.5,
-              fontWeight: 600,
-              padding: '8px 18px',
-              borderRadius: 100,
-              fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-              boxShadow: '0 2px 12px rgba(181,80,46,0.30)',
-              transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'
-              ;(e.currentTarget as HTMLButtonElement).style.boxShadow =
-                '0 4px 18px rgba(181,80,46,0.40)'
-            }}
-            onMouseLeave={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'
-              ;(e.currentTarget as HTMLButtonElement).style.boxShadow =
-                '0 2px 12px rgba(181,80,46,0.30)'
-            }}
+            className="bg-rust text-white font-semibold text-sm px-5 py-2.5 rounded-xl shadow-md shadow-rust/15 hover:shadow-lg hover:shadow-rust/25 cursor-pointer hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150"
           >
             {isLanding ? (user ? 'Dashboard' : 'Get started') : 'Dashboard'}
           </button>

@@ -263,11 +263,27 @@ class GraniteClient:
             msg_l = msg.lower()
             if any(w in msg_l for w in ["hello", "hi", "hey"]):
                 greetings = [
-                    "Hello! I'm your AI career mentor. I can help you practice coding, design system architectures, refine your resume, or simulate mock interviews. What role are you preparing for?",
-                    "Hi there! Great to connect. Ready to level up your interview preparation today? What topic or target company are we focusing on?",
-                    "Hello! How is your interview preparation going? Let me know if you want to run a mock interview, review a topic, or look at your roadmap."
+                    "Hello! I'm your AI career mentor. I can help you review career paths, practice resume bullet formats, check your study roadmap, or share system design tips. How can I help you today?",
+                    "Hi there! Great to connect. Ready to level up your career goals today? What specific doubts or topics are we focusing on?",
+                    "Hello! How is your interview preparation going? Let me know if you want to run through prep strategy, discuss target roles, or check your roadmap."
                 ]
                 return greetings[GraniteClient._mock_counter % len(greetings)]
+            
+            elif any(w in msg_l for w in ["career", "path", "track", "grow", "become", "lead", "manager", "architect"]):
+                career_responses = [
+                    "Navigating career paths is about aligning your strengths. If you enjoy deep technical focus, the Individual Contributor (IC) track toward Architect is great. If you enjoy enabling people, tech lead or manager roles fit well. What track feels more exciting to you?",
+                    "To transition to senior engineer roles, focus on scope of impact: designing systems that multiple engineers use, mentoring juniors, and aligning projects with product goals. What is your current role or target milestone?",
+                    "Whether backend, frontend, or full-stack, choose the path that makes you curious. A successful career starts with solid engineering fundamentals, which make picking up new stacks easy. Let me know what technologies you are curious about!"
+                ]
+                return career_responses[GraniteClient._mock_counter % len(career_responses)]
+
+            elif any(w in msg_l for w in ["doubt", "nervous", "scared", "fail", "anxious", "confidence", "stuck", "gap"]):
+                doubt_responses = [
+                    "It is completely normal to feel nervous or experience imposter syndrome. Even principal engineers get stuck! Focus on explaining your thought process out loud—interviewers value structured thinking over instant perfect answers.",
+                    "If you encounter a question you don't know the answer to, don't guess blindly. Say: 'I haven't worked directly with that technology, but based on my knowledge of similar systems, I would approach it like this...' This shows maturity and problem-solving skills.",
+                    "Confidence comes from structured preparation, not memorization. Focus on mastering templates like the STAR method for behavioral questions and requirement gathering for system design. You've got this!"
+                ]
+                return doubt_responses[GraniteClient._mock_counter % len(doubt_responses)]
             
             elif "resume" in msg_l or "cv" in msg_l:
                 resume_tips = [
@@ -287,7 +303,7 @@ class GraniteClient:
             
             elif any(w in msg_l for w in ["behavioral", "star method", "tell me about yourself", "experience"]):
                 behavioral_tips = [
-                    "For behavioral questions, use the STAR method: Situation, Task, Action, Result. Focus 70% of your time on the Actions you took, and always finish with a quantified Result. Let's practice one: tell me about a time you resolved a technical conflict.",
+                    "For behavioral questions, use the STAR method: Situation, Task, Action, Result. Focus 70% of your response time on the Actions you took, and always finish with a quantified Result. Let's practice one: tell me about a time you resolved a technical conflict.",
                     "Interviewers look for leadership, conflict resolution, and ownership in behavioral answers. Try to frame challenges as learning opportunities. Tell me about a time you made a technical mistake and how you handled it.",
                     "Avoid saying 'we' too much in behavioral answers; the interviewer wants to know what YOU did. What is a complex project you owned from end to end?"
                 ]
@@ -319,8 +335,8 @@ class GraniteClient:
             
             elif any(w in msg_l for w in ["thanks", "thank you", "perfect"]):
                 thanks_tips = [
-                    "You're very welcome! Keep practicing and staying structured. Let me know what else you'd like to dive into next.",
-                    "Glad that was helpful! Keep drilling those concepts. What should we tackle next?",
+                    "You're very welcome! Keep practicing and staying structured. Let me know what else you'd like to discuss or verify next.",
+                    "Glad that was helpful! Keep drilling those concepts. What else should we tackle on your career journey?",
                     "Anytime! I'm here to support you until you feel 100% ready for the real thing. What's the next step on your mind?"
                 ]
                 return thanks_tips[GraniteClient._mock_counter % len(thanks_tips)]
@@ -328,13 +344,10 @@ class GraniteClient:
             else:
                 clean_msg = msg[:60] + "..." if len(msg) > 60 else msg
                 general_responses = [
-                    f"That's an interesting question regarding '{clean_msg}'. In technical interviews, candidates often focus too much on the happy path. I'd recommend thinking about what happens when services crash, network connections drop, or the database becomes saturated. How would you handle those edge cases?",
-                    f"I see you're drilling down into '{clean_msg}'. It's vital to know the performance trade-offs here. For instance, caching helps read latency but adds complexity to write validation and cache invalidation. How would you handle cache consistency in this scenario?",
-                    f"Regarding '{clean_msg}', a common follow-up interviewers ask is about metrics and observability. How would you set up alerting, dashboarding, or tracing to detect if this system is failing in production?",
-                    f"That's a solid point about '{clean_msg}'. When designing code or infrastructure for this, consider how to keep it modular and testable. How would you mock dependencies to write clean unit tests for this logic?",
-                    f"When discussing '{clean_msg}' with senior developers, they like to see solid database decision-making. Would you opt for a relational database like PostgreSQL or a NoSQL database like MongoDB for this kind of data model, and why?",
-                    f"That ties back to scalability constraints for '{clean_msg}'. If your traffic suddenly scaled 100x overnight, where would the bottleneck be? Would it be CPU, memory, database IOPS, or network bandwidth?",
-                    f"That's a helpful perspective. Let's think about how to frame this experience during a behavioral question. How would you describe a challenge you faced related to '{clean_msg}' using the STAR method?"
+                    f"That's a very common concern about '{clean_msg}'. As your career coach, I suggest breaking this down: focus first on mastering core engineering fundamentals (system designs, database choices), then move to behavioral structures. Don't worry about memorizing everything; showing a structured approach is what matters most.",
+                    f"Regarding '{clean_msg}', my best advice is to build a consistent daily habit. Even 30 minutes of focused practice or resume optimization per day adds up faster than cramming. What's the biggest roadblock you're facing with this right now?",
+                    f"When dealing with '{clean_msg}', remember that interviewers look for collaboration and adaptability as much as direct coding skills. If you get stuck in a session, explain your assumptions out loud. It shows how you work with a team.",
+                    f"That's a helpful perspective about '{clean_msg}'. In my experience coaching engineering candidates, the key is aligning your past projects directly with target role requirements. Focus on demonstrating ownership and the business value of your work."
                 ]
                 return general_responses[GraniteClient._mock_counter % len(general_responses)]
 
@@ -357,22 +370,23 @@ class GraniteClient:
             changes_made = []
 
             for line in resume_text.splitlines():
-                matched = False
+                modified_line = line
                 for weak, strong in rewrites.items():
-                    if weak in line.lower():
-                        improved_lines.append(strong)
-                        changes_made.append(f"Optimized phrase '{weak}' into a quantified impact statement.")
-                        matched = True
-                        break
-                if not matched:
-                    if "responsible for" in line.lower():
-                        line = line.replace("responsible for", "Spearheaded design and delivery of")
+                    if weak in modified_line.lower():
+                        start_idx = modified_line.lower().find(weak)
+                        if start_idx != -1:
+                            end_idx = start_idx + len(weak)
+                            modified_line = modified_line[:start_idx] + strong + modified_line[end_idx:]
+                            changes_made.append(f"Optimized phrase '{weak}' into a quantified impact statement.")
+                
+                if "responsible for" in modified_line.lower():
+                    start_idx = modified_line.lower().find("responsible for")
+                    if start_idx != -1:
+                        end_idx = start_idx + len("responsible for")
+                        modified_line = modified_line[:start_idx] + "Spearheaded design and delivery of" + modified_line[end_idx:]
                         changes_made.append("Upgraded passive duty statement to active leadership verb.")
-                    improved_lines.append(line)
-
-            if not changes_made:
-                improved_lines.append("\n**Key Technical Projects (Optimized)**\n- Developed high-concurrency microservices utilizing FastAPI, Redis Caching, and Docker containers, improving request throughput by 45%.\n- Integrated comprehensive monitoring and alerting infrastructure using Prometheus and Grafana for backend API services.")
-                changes_made.append("Appended optimized, impact-focused project achievements.")
+                
+                improved_lines.append(modified_line)
 
             improved_text = "\n".join(improved_lines)
 
@@ -439,47 +453,303 @@ class GraniteClient:
 
             # Define topic progression maps
             syllabus_backend = [
-                ("API Design & RESTful Standards", "Master REST constraints, status codes, query filtering, pagination, and OpenAPI specifications."),
-                ("Database Scaling & Indexes", "Deep dive into composite indexes, query optimization, sharding, replication, and SQL vs NoSQL trade-offs."),
-                ("Caching Strategies & Stampedes", "Master Redis cache-aside pattern, eviction policies (LRU, LFU), TTL strategies, and cache stampede mitigations."),
-                ("Concurrency & Thread Pools", "Understand CPU-bound vs I/O-bound tasks, multithreading, asyncio event loops, locks, and thread pool scaling."),
-                ("Message Queues & Event-Driven Design", "Integrate RabbitMQ/Kafka, pub-sub architectures, consumer groups, message durability, and backpressure."),
-                ("Microservices & Distributed Transactions", "Understand API gateways, service discovery, saga pattern, two-phase commits, and circuit breakers."),
-                ("Containerization & Orchestration", "Learn multi-stage Docker builds, resource constraints, Kubernetes pods, services, and config maps."),
-                ("High Availability & Reliability Engineering", "Study rate-limiting, load balancers, database failover, health checks, and monitoring with Prometheus/Grafana.")
+                (
+                    "API Design & RESTful Standards", 
+                    "Master REST constraints, status codes, query filtering, pagination, and OpenAPI specifications.",
+                    [
+                        "What is the difference between PUT and PATCH, and when would you use each?",
+                        "How would you design a robust API pagination strategy for a high-volume endpoint?",
+                        "What are idempotency keys, and how do they ensure safe request retries in payment APIs?"
+                    ]
+                ),
+                (
+                    "Database Scaling & Indexes", 
+                    "Deep dive into composite indexes, query optimization, sharding, replication, and SQL vs NoSQL trade-offs.",
+                    [
+                        "Explain the difference between a clustered and non-clustered index, and how they impact write operations.",
+                        "How do database replica lags occur in primary-replica setups, and how do you handle read-after-write consistency?",
+                        "Under what conditions is database sharding preferred over vertical scaling and replication?"
+                    ]
+                ),
+                (
+                    "Caching Strategies & Stampedes", 
+                    "Master Redis cache-aside pattern, eviction policies (LRU, LFU), TTL strategies, and cache stampede mitigations.",
+                    [
+                        "What is cache stampede (thundering herd) and how do you mitigate it using mutual exclusion or background warming?",
+                        "Compare the Cache-Aside, Write-Through, and Write-Back caching strategies.",
+                        "How does Redis handle eviction when memory is full, and what is the difference between volatile-lru and allkeys-lru?"
+                    ]
+                ),
+                (
+                    "Concurrency & Thread Pools", 
+                    "Understand CPU-bound vs I/O-bound tasks, multithreading, asyncio event loops, locks, and thread pool scaling.",
+                    [
+                        "What is the difference between a process and a thread, and how does the GIL affect concurrency in Python?",
+                        "How do you identify and resolve thread deadlocks in high-concurrency systems?",
+                        "Explain the event loop model in asynchronous frameworks compared to multi-threaded worker pools."
+                    ]
+                ),
+                (
+                    "Message Queues & Event-Driven Design", 
+                    "Integrate RabbitMQ/Kafka, pub-sub architectures, consumer groups, message durability, and backpressure.",
+                    [
+                        "How does Kafka guarantee message ordering within a topic, and what happens when a consumer group rebalances?",
+                        "What is the difference between at-least-once, at-most-once, and exactly-once delivery guarantees?",
+                        "How do you handle consumer backpressure when message ingress rates exceed processing capabilities?"
+                    ]
+                ),
+                (
+                    "Microservices & Distributed Transactions", 
+                    "Understand API gateways, service discovery, saga pattern, two-phase commits, and circuit breakers.",
+                    [
+                        "What is the Saga pattern, and how does it maintain data consistency compared to two-phase commits (2PC)?",
+                        "How does a circuit breaker prevent cascading failures in a microservices mesh?",
+                        "Compare service discovery models: client-side discovery vs server-side discovery."
+                    ]
+                ),
+                (
+                    "Containerization & Orchestration", 
+                    "Learn multi-stage Docker builds, resource constraints, Kubernetes pods, services, and config maps.",
+                    [
+                        "Why should you use multi-stage Docker builds, and how do they impact image footprint security?",
+                        "What is the difference between a Kubernetes Pod, ReplicaSet, and Deployment?",
+                        "How do Kubernetes readiness probes differ from liveness probes, and why are they critical during rollouts?"
+                    ]
+                ),
+                (
+                    "High Availability & Reliability Engineering", 
+                    "Study rate-limiting, load balancers, database failover, health checks, and monitoring with Prometheus/Grafana.",
+                    [
+                        "How would you design a distributed token-bucket rate limiter that scales across multiple servers?",
+                        "What is the difference between active-passive and active-active failover strategies?",
+                        "How do you monitor key metrics like latency, throughput, error rates, and saturation (Golden Signals)?"
+                    ]
+                )
             ]
 
             syllabus_frontend = [
-                ("Advanced JS/TS & Clean Code", "Deep dive into JS closures, prototype chains, event loop, TS advanced types (mapped, conditional, utility)."),
-                ("React Architecture & Render Lifecycle", "Understand Virtual DOM, React Fiber reconciler, component mounts, hooks rendering patterns, and concurrent mode."),
-                ("Web Performance & Code Splitting", "Optimize Core Web Vitals, critical rendering path, lazy loading, dynamic import(), and bundler optimizations."),
-                ("State Management & Data Flow", "Master local vs global states, React context, Zustand, Redux Toolkit, and atomic states like Recoil."),
-                ("Browser APIs & Security", "Learn about service workers, offline storage (IndexedDB), CORS policy, XSS, CSRF, and CSP headers."),
-                ("CSS layouts & Responsive Design", "Master Flexbox, CSS Grid, container queries, Tailwind utility classes, and CSS-in-JS variables."),
-                ("Testing & CI/CD for Frontend", "Write unit tests with Vitest, component tests with Testing Library, and E2E automation with Playwright."),
-                ("SSR, SSG & Modern Frameworks", "Master Next.js App Router, server components, static generation, dynamic hydration, and edge middleware.")
+                (
+                    "Advanced JS/TS & Clean Code", 
+                    "Deep dive into JS closures, prototype chains, event loop, TS advanced types (mapped, conditional, utility).",
+                    [
+                        "What is a closure in JavaScript, and how can it lead to memory leaks?",
+                        "How does the JavaScript event loop handle call stack, microtask queue, and macrotask queue priorities?",
+                        "Explain TypeScript utility types like Omit, Pick, and Exclude, and how they ensure type safety."
+                    ]
+                ),
+                (
+                    "React Architecture & Render Lifecycle", 
+                    "Understand Virtual DOM, React Fiber reconciler, component mounts, hooks rendering patterns, and concurrent mode.",
+                    [
+                        "What is React Fiber, and how does it enable concurrent rendering and interruptible updates?",
+                        "How do you prevent unnecessary re-renders in deep React component trees?",
+                        "Compare React state hooks (useState, useReducer) with ref hooks (useRef) in terms of rendering triggers."
+                    ]
+                ),
+                (
+                    "Web Performance & Code Splitting", 
+                    "Optimize Core Web Vitals, critical rendering path, lazy loading, dynamic import(), and bundler optimizations.",
+                    [
+                        "What are Core Web Vitals (LCP, FID, CLS, INP), and how do you optimize them?",
+                        "How does dynamic import() enable code splitting, and how do you implement route-level lazy loading?",
+                        "How do resource hints like prefetch, preload, and preconnect optimize the critical rendering path?"
+                    ]
+                ),
+                (
+                    "State Management & Data Flow", 
+                    "Master local vs global states, React context, Zustand, Redux Toolkit, and atomic states like Recoil.",
+                    [
+                        "Compare the data flow models of Redux vs Zustand vs Recoil in state architectures.",
+                        "What is prop drilling, and how does React Context API solve it? What are Context's performance trade-offs?",
+                        "How do you synchronize local state changes with server database states (e.g. using React Query / SWR)?"
+                    ]
+                ),
+                (
+                    "Browser APIs & Security", 
+                    "Learn about service workers, offline storage (IndexedDB), CORS policy, XSS, CSRF, and CSP headers.",
+                    [
+                        "How does a Service Worker enable offline capabilities and background sync in Progressive Web Apps?",
+                        "Explain cross-site scripting (XSS) and cross-site request forgery (CSRF), and how modern frontends defend against them.",
+                        "What is Content Security Policy (CSP), and how do nonce tokens secure inline scripts?"
+                    ]
+                ),
+                (
+                    "CSS layouts & Responsive Design", 
+                    "Master Flexbox, CSS Grid, container queries, Tailwind utility classes, and CSS-in-JS variables.",
+                    [
+                        "Compare CSS Flexbox (1D) vs CSS Grid (2D), and when is each layout model preferred?",
+                        "How do CSS container queries differ from traditional viewport-based media queries?",
+                        "What are the pros and cons of utility-first CSS frameworks like Tailwind compared to CSS Modules?"
+                    ]
+                ),
+                (
+                    "Testing & CI/CD for Frontend", 
+                    "Write unit tests with Vitest, component tests with Testing Library, and E2E automation with Playwright.",
+                    [
+                        "What is the difference between unit testing, component testing, and end-to-end (E2E) testing?",
+                        "How do you mock API calls in component tests using tools like Mock Service Worker (MSW)?",
+                        "What are the key stages of a frontend deployment pipeline (linting, build verification, asset hosting)?"
+                    ]
+                ),
+                (
+                    "SSR, SSG & Modern Frameworks", 
+                    "Master Next.js App Router, server components, static generation, dynamic hydration, and edge middleware.",
+                    [
+                        "Compare Server-Side Rendering (SSR), Static Site Generation (SSG), and Client-Side Rendering (CSR).",
+                        "How do React Server Components (RSC) differ from standard client components, and how do they reduce bundle sizes?",
+                        "What is progressive hydration, and how does it optimize Time to Interactive (TTI)?"
+                    ]
+                )
             ]
 
             syllabus_ds = [
-                ("Feature Engineering & Analytics", "Clean datasets, impute missing values, scale variables, and run exploratory data analyses."),
-                ("Supervised & Unsupervised Learning", "Compare linear/logistic regression, tree-based models, clustering techniques, and metrics like F1 and ROC-AUC."),
-                ("Deep Learning & Frameworks", "Build neural networks using PyTorch/TensorFlow, optimize weights, prevent overfitting, and use transfer learning."),
-                ("LLMs & NLP Tuning", "Learn transformer architectures, tokenize text corpora, vector embeddings, semantic search, and prompt engineering."),
-                ("Model Deployment & APIs", "Containerize machine learning models using Docker, build FastAPI endpoints, and serve inference results."),
-                ("Big Data & Cloud Pipelines", "Write PySpark data transformations, build ETL pipelines, and query datasets using Snowflake/Redshift."),
-                ("A/B Testing & Experimentation", "Formulate null hypotheses, calculate sample sizes, run power analyses, and evaluate statistical significance."),
-                ("MLOps & Lifecycle Monitoring", "Set up MLflow model registries, track experiments, detect data drift, and automate pipeline trigger schedules.")
+                (
+                    "Feature Engineering & Analytics", 
+                    "Clean datasets, impute missing values, scale variables, and run exploratory data analyses.",
+                    [
+                        "How do you handle collinear features in linear regression models?",
+                        "Explain the difference between L1 (Lasso) and L2 (Ridge) regularization.",
+                        "What is the target leakage in ML pipelines, and how do you prevent it?"
+                    ]
+                ),
+                (
+                    "Supervised & Unsupervised Learning", 
+                    "Compare linear/logistic regression, tree-based models, clustering techniques, and metrics like F1 and ROC-AUC.",
+                    [
+                        "Why is the ROC-AUC score preferred over classification accuracy for imbalanced datasets?",
+                        "How does a Random Forest model determine feature importances?",
+                        "What are the differences between K-Means and DBSCAN clustering algorithms?"
+                    ]
+                ),
+                (
+                    "Deep Learning & Frameworks", 
+                    "Build neural networks using PyTorch/TensorFlow, optimize weights, prevent overfitting, and use transfer learning.",
+                    [
+                        "What is the vanishing gradient problem, and how do activation functions like ReLU mitigate it?",
+                        "Explain the role of Dropout layers during training vs inference.",
+                        "What is the difference between SGD, Adam, and RMSprop optimizers?"
+                    ]
+                ),
+                (
+                    "LLMs & NLP Tuning", 
+                    "Learn transformer architectures, tokenize text corpora, vector embeddings, semantic search, and prompt engineering.",
+                    [
+                        "Explain the self-attention mechanism in Transformer architectures.",
+                        "What is the difference between fine-tuning a model and utilizing RAG templates?",
+                        "How do temperature and top-p sampling impact text generation output randomness?"
+                    ]
+                ),
+                (
+                    "Model Deployment & APIs", 
+                    "Containerize machine learning models using Docker, build FastAPI endpoints, and serve inference results.",
+                    [
+                        "How do you structure a high-throughput inference API for ML models using FastAPI?",
+                        "What is model drift, and how do you monitor performance changes in production?",
+                        "Under what scenarios would you choose batch prediction over real-time API inference?"
+                    ]
+                ),
+                (
+                    "Big Data & Cloud Pipelines", 
+                    "Write PySpark data transformations, build ETL pipelines, and query datasets using Snowflake/Redshift.",
+                    [
+                        "How does PySpark manage data partitioning and shuffle operations during joins?",
+                        "Explain the difference between ETL and ELT pipelines, and when to use Snowflake vs Redshift.",
+                        "How do you handle schema evolution in streaming data lakes?"
+                    ]
+                ),
+                (
+                    "A/B Testing & Experimentation", 
+                    "Formulate null hypotheses, calculate sample sizes, run power analyses, and evaluate statistical significance.",
+                    [
+                        "How do you determine the required sample size for an A/B test based on statistical power?",
+                        "What is the p-value, and what does it mean to achieve a 95% confidence interval?",
+                        "How do you identify and control for skew and bias in user assignment metrics?"
+                    ]
+                ),
+                (
+                    "MLOps & Lifecycle Monitoring", 
+                    "Set up MLflow model registries, track experiments, detect data drift, and automate pipeline trigger schedules.",
+                    [
+                        "What are the core components of an MLOps pipeline, and how does model registry versioning work?",
+                        "How do you detect feature drift in a model's inputs over time?",
+                        "What is continuous training (CT) and when should it be automated?"
+                    ]
+                )
             ]
 
             syllabus_default = [
-                ("Computer Science Fundamentals", "Review Big O complexity, dynamic programming, sorting/searching, and basic memory management."),
-                ("Data Structures in Practice", "Master arrays, hash maps, linked lists, trees, and graphs, focusing on traversal algorithms."),
-                ("Design Patterns & Architecture", "Study creational, structural, and behavioral patterns, alongside SOLID engineering principles."),
-                ("System Design Basics", "Understand vertical vs horizontal scaling, load balancing, DNS routing, and monolithic vs microservices."),
-                ("Database & Transactions", "Master ACID guarantees, isolation levels, database normalization, and query performance optimizations."),
-                ("Networking & Protocols", "Deep dive into HTTP/HTTPS, TCP/IP, websockets, DNS lookups, and load balancer configurations."),
-                ("CI/CD & Version Control", "Master advanced Git workflows (rebase, cherry-pick), automation pipelines, and infrastructure deployment."),
-                ("Security & Reliability", "Learn about encryption, HTTPS, OAuth2 authorization flows, rate limiting, and system failure recovery.")
+                (
+                    "Computer Science Fundamentals", 
+                    "Review Big O complexity, dynamic programming, sorting/searching, and basic memory management.",
+                    [
+                        "What is the difference between quicksort and mergesort in terms of time and space complexity?",
+                        "Explain how dynamic programming optimization differs from memoization techniques.",
+                        "What is a pointer, and how does garbage collection manage reference counts in modern runtimes?"
+                    ]
+                ),
+                (
+                    "Data Structures in Practice", 
+                    "Master arrays, hash maps, linked lists, trees, and graphs, focusing on traversal algorithms.",
+                    [
+                        "How do hash map collisions occur, and how do separate chaining and open addressing resolve them?",
+                        "What is the difference between depth-first search (DFS) and breadth-first search (BFS) on graphs?",
+                        "What is a binary search tree, and how do you balance a tree in-place?"
+                    ]
+                ),
+                (
+                    "Design Patterns & Architecture", 
+                    "Study creational, structural, and behavioral patterns, alongside SOLID engineering principles.",
+                    [
+                        "Explain the Single Responsibility Principle and the Dependency Inversion Principle.",
+                        "What is the Singleton pattern, and how do you implement a thread-safe singleton?",
+                        "Compare the Strategy design pattern with the State design pattern."
+                    ]
+                ),
+                (
+                    "System Design Basics", 
+                    "Understand vertical vs horizontal scaling, load balancing, DNS routing, and monolithic vs microservices.",
+                    [
+                        "What is the difference between vertical scaling and horizontal scaling?",
+                        "How does a DNS query resolution loop execute from client to root server?",
+                        "What is the role of a reverse proxy vs a load balancer?"
+                    ]
+                ),
+                (
+                    "Database & Transactions", 
+                    "Master ACID guarantees, isolation levels, database normalization, and query performance optimizations.",
+                    [
+                        "What are ACID transactions, and what is the role of Write-Ahead Logging (WAL)?",
+                        "Explain the difference between Read Committed and Serializable transaction isolation levels.",
+                        "Under what scenarios is a NoSQL document database preferred over a normalized relational database?"
+                    ]
+                ),
+                (
+                    "Networking & Protocols", 
+                    "Deep dive into HTTP/HTTPS, TCP/IP, websockets, DNS lookups, and load balancer configurations.",
+                    [
+                        "How does a TCP 3-way handshake establish a connection, and how does TLS handshake secure it?",
+                        "Explain how WebSockets enable full-duplex communication over a single TCP connection.",
+                        "What is HTTP/2 multiplexing, and how does it optimize page asset loading?"
+                    ]
+                ),
+                (
+                    "CI/CD & Version Control", 
+                    "Master advanced Git workflows (rebase, cherry-pick), automation pipelines, and infrastructure deployment.",
+                    [
+                        "Compare Git merge vs Git rebase workflows, and when to use each.",
+                        "How do you design a secure, automated CI/CD pipeline that enforces testing gates?",
+                        "What is Git cherry-pick, and under what conditions is it used?"
+                    ]
+                ),
+                (
+                    "Security & Reliability", 
+                    "Learn about encryption, HTTPS, OAuth2 authorization flows, rate limiting, and system failure recovery.",
+                    [
+                        "What is the difference between symmetric and asymmetric encryption, and how are they used in SSL/TLS?",
+                        "Explain the OAuth2 authorization code grant flow with PKCE.",
+                        "How does a token-bucket rate limiter enforce traffic bounds on APIs?"
+                    ]
+                )
             ]
 
             active_syllabus = syllabus_default
@@ -492,12 +762,13 @@ class GraniteClient:
 
             steps = []
             for i in range(1, weeks + 1):
-                title, desc = active_syllabus[(i - 1) % len(active_syllabus)]
+                title, desc, questions = active_syllabus[(i - 1) % len(active_syllabus)]
                 steps.append({
                     "step_number": i,
                     "title": title,
                     "description": desc,
-                    "estimated_hours": 15
+                    "estimated_hours": 15,
+                    "questions": questions
                 })
 
             import json
@@ -818,21 +1089,18 @@ class GraniteClient:
             role = "Software Engineer"
             week = 1
             topic = ""
-            for line in prompt.splitlines():
-                if "role:" in line.lower():
-                    parts = prompt.split(line)
-                    if len(parts) > 1:
-                        lines_after = parts[1].strip().splitlines()
-                        if lines_after:
-                            role = lines_after[0].strip()
-                elif "week:" in line.lower():
-                    parts = line.split(":", 1)
-                    if len(parts) > 1 and parts[1].strip().isdigit():
-                        week = int(parts[1].strip())
-                elif "topic:" in line.lower():
-                    parts = line.split(":", 1)
-                    if len(parts) > 1:
-                        topic = parts[1].strip()
+            prompt_lines = prompt.splitlines()
+            for idx, line in enumerate(prompt_lines):
+                line_stripped = line.strip()
+                if line_stripped.lower() == "role:":
+                    if idx + 1 < len(prompt_lines):
+                        role = prompt_lines[idx + 1].strip()
+                elif line_stripped.lower() == "week:":
+                    if idx + 1 < len(prompt_lines) and prompt_lines[idx + 1].strip().isdigit():
+                        week = int(prompt_lines[idx + 1].strip())
+                elif line_stripped.lower() == "topic:":
+                    if idx + 1 < len(prompt_lines):
+                        topic = prompt_lines[idx + 1].strip()
 
             role_lower = role.lower()
             topic_lower = topic.lower()

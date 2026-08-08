@@ -2,13 +2,12 @@ import { useState, useEffect } from 'react'
 import { Nav } from '../components/Nav'
 import { OrbitLoader } from '../components/OrbitLoader'
 import * as api from '../lib/apiClient'
+import { motion, AnimatePresence } from 'framer-motion'
+import { BookOpen, Star, Trash2, Search, Sparkles, Folder, Play, Plus, RefreshCw } from 'lucide-react'
 
 type Page = 'landing' | 'login' | 'register' | 'onboarding' | 'workspace' | 'roadmap' | 'interview' | 'notes' | 'mastery' | 'mentor'
 interface Props { navigate: (p: Page) => void }
 
-// The Notes Agent returns `blocks: [{type, content}]` JSON (see
-// ai/agents/notes_agent.py); manually-created notes store plain text
-// instead, so we fall back gracefully if content isn't parseable JSON.
 function parseBlocks(content: string): { type: string; content: string }[] | null {
   try {
     const parsed = JSON.parse(content)
@@ -22,27 +21,27 @@ function parseBlocks(content: string): { type: string; content: string }[] | nul
 function NoteBody({ note }: { note: api.NoteResponse }) {
   const blocks = parseBlocks(note.content)
   if (!blocks) {
-    return <p style={{ fontSize: 15, color: '#1C1917', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{note.content}</p>
+    return <p className="text-xs sm:text-sm text-text-muted leading-relaxed whitespace-pre-wrap">{note.content}</p>
   }
   return (
-    <div style={{ fontSize: 15, color: '#1C1917', lineHeight: 1.8 }}>
+    <div className="flex flex-col gap-4 font-sans text-xs sm:text-sm text-text">
       {blocks.map((b, i) => {
         if (b.type === 'diagram') {
           return (
-            <pre key={i} style={{ background: '#F5F2EE', borderRadius: 10, padding: '16px 20px', fontSize: 13, overflowX: 'auto', lineHeight: 1.6, border: '1px solid rgba(181,80,46,0.10)', margin: '16px 0', fontFamily: 'monospace' }}>
+            <pre key={i} className="bg-terminal-bg rounded-xl p-4 text-[11px] overflow-x-auto text-accent font-mono border border-border/10 leading-relaxed my-2">
               {b.content}
             </pre>
           )
         }
         if (b.type === 'exercise') {
           return (
-            <div key={i} style={{ background: 'rgba(181,80,46,0.05)', border: '1.5px solid rgba(181,80,46,0.15)', borderRadius: 12, padding: '16px 18px', margin: '16px 0' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B5502E', marginBottom: 8 }}>Exercise</div>
-              <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{b.content}</p>
+            <div key={i} className="bg-rust/5 border border-rust/20 rounded-xl p-4 my-2">
+              <div className="text-[10px] font-bold tracking-wider uppercase text-rust mb-2">Target Exercise</div>
+              <p className="margin-0 text-xs text-text leading-relaxed whitespace-pre-wrap">{b.content}</p>
             </div>
           )
         }
-        return <p key={i} style={{ margin: '0 0 16px', whiteSpace: 'pre-wrap' }}>{b.content}</p>
+        return <p key={i} className="text-text-muted leading-relaxed whitespace-pre-wrap">{b.content}</p>
       })}
     </div>
   )
@@ -56,6 +55,8 @@ export default function Notes({ navigate }: Props) {
   const [generating, setGenerating] = useState(false)
   const [slowGenerate, setSlowGenerate] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeFilter, setActiveFilter] = useState<'all' | 'bookmarks'>('all')
 
   const load = async () => {
     const data = await api.listNotes()
@@ -65,7 +66,6 @@ export default function Notes({ navigate }: Props) {
 
   useEffect(() => {
     load().finally(() => setLoading(false))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const runGenerate = async () => {
@@ -73,9 +73,7 @@ export default function Notes({ navigate }: Props) {
     setGenerating(true)
     setSlowGenerate(false)
     setError(null)
-    // Real generations typically finish in 15-100s; only nudge the user
-    // that it's still working (rather than silently spinning) past that.
-    const slowTimer = setTimeout(() => setSlowGenerate(true), 15_000)
+    const slowTimer = setTimeout(() => setSlowGenerate(true), 15000)
     try {
       const note = await api.generateNote(topic.trim())
       setTopic('')
@@ -101,7 +99,7 @@ export default function Notes({ navigate }: Props) {
   }
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this note?")) return
+    if (!window.confirm("Are you sure you want to delete this study note?")) return
     try {
       await api.deleteNote(id)
       const remaining = notes.filter((n) => n.id !== id)
@@ -116,104 +114,222 @@ export default function Notes({ navigate }: Props) {
     }
   }
 
+  const filteredNotes = notes.filter((n) => {
+    const matchesSearch = n.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          n.category.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesBookmark = activeFilter === 'bookmarks' ? n.is_bookmarked : true
+    return matchesSearch && matchesBookmark
+  })
+
   const note = notes.find((n) => n.id === selected)
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#FAFAF8' }}>
+      <div className="min-h-screen bg-bg">
         <Nav page="notes" navigate={navigate} />
-        <OrbitLoader label="Loading notes…" size={72} />
+        <OrbitLoader label="Syncing study sheets..." size={80} />
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#FAFAF8', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", display: 'flex', flexDirection: 'column' }}>
+    <div className="min-h-screen bg-bg text-text transition-colors duration-300 font-sans flex flex-col h-screen overflow-hidden">
       <Nav page="notes" navigate={navigate} />
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '300px 1fr', maxHeight: 'calc(100vh - 64px)' }}>
-        {/* Sidebar */}
-        <div style={{ borderRight: '1px solid rgba(181,80,46,0.10)', padding: '24px 16px', overflowY: 'auto', background: '#F5F2EE' }}>
-          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: '#7A6B63', padding: '0 8px', marginBottom: 12 }}>
-            Your notes
-          </p>
 
-          <form onSubmit={handleGenerate} style={{ padding: '0 8px', marginBottom: 16 }}>
-            <input
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="Generate a note on…"
-              style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1.5px solid rgba(181,80,46,0.20)', fontSize: 12.5, boxSizing: 'border-box', marginBottom: 6, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            />
-            <button
-              type="submit"
-              disabled={generating || !topic.trim()}
-              style={{ width: '100%', background: generating ? 'rgba(181,80,46,0.4)' : 'linear-gradient(135deg, #B5502E, #C97350)', border: 'none', cursor: generating ? 'not-allowed' : 'pointer', color: '#FAFAF8', fontSize: 12, fontWeight: 700, padding: '8px 0', borderRadius: 100, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            >
-              {generating ? 'Generating…' : 'Generate'}
-            </button>
+      <div className="flex-1 flex overflow-hidden">
+        
+        {/* Left Sidebar */}
+        <aside className="w-80 border-r border-border bg-panel-bg/30 flex flex-col h-full overflow-hidden">
+          
+          {/* Note Generator Section */}
+          <div className="p-4 border-b border-border/80 flex flex-col gap-3">
+            <span className="text-[9px] uppercase font-bold tracking-wider text-text-muted">Generate Study Sheet</span>
+            <form onSubmit={handleGenerate} className="flex flex-col gap-2">
+              <input
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="Topic e.g. Cache Invalidations"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-bg/50 text-xs focus:outline-none focus:border-rust/60 transition-colors"
+              />
+              <button
+                type="submit"
+                disabled={generating || !topic.trim()}
+                className={`w-full py-2 rounded-xl text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  generating || !topic.trim() ? 'bg-rust/50 cursor-not-allowed' : 'bg-rust hover:bg-rust/90'
+                }`}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{generating ? 'Generating...' : 'Generate Notes'}</span>
+              </button>
+            </form>
+
             {generating && slowGenerate && (
-              <p style={{ fontSize: 11, color: '#7A6B63', margin: '6px 0 0' }}>
-                Still working - real model generation can take a few minutes.
+              <p className="text-[10px] text-text-muted/80 leading-normal animate-pulse">
+                Generating comprehensive analysis...
               </p>
             )}
+
             {error && (
-              <div style={{ marginTop: 6 }}>
-                <p style={{ fontSize: 11, color: '#B5502E', margin: '0 0 4px' }}>{error}</p>
-                <button
-                  type="button"
-                  onClick={runGenerate}
-                  style={{ background: 'none', border: '1px solid rgba(181,80,46,0.30)', borderRadius: 100, cursor: 'pointer', padding: '4px 10px', fontSize: 10.5, fontWeight: 700, color: '#B5502E', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+              <div className="text-[10px] text-red-500 font-semibold mt-1">
+                {error}
+                <button 
+                  onClick={runGenerate} 
+                  className="block text-rust underline cursor-pointer mt-1"
                 >
                   Retry
                 </button>
               </div>
             )}
-          </form>
+          </div>
 
-          {notes.length === 0 && (
-            <p style={{ fontSize: 12.5, color: '#7A6B63', padding: '0 8px' }}>No notes yet. Generate one above, or complete a mock interview to auto-generate notes for weak topics.</p>
-          )}
-
-          {notes.map((n) => (
-            <button
-              key={n.id}
-              onClick={() => setSelected(n.id)}
-              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '14px 12px', borderRadius: 12, background: selected === n.id ? '#FFFFFF' : 'none', border: selected === n.id ? '1.5px solid rgba(181,80,46,0.20)' : '1.5px solid transparent', cursor: 'pointer', marginBottom: 4, boxShadow: selected === n.id ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            >
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#1C1917', lineHeight: 1.4, marginBottom: 5 }}>{n.title}</div>
-              <div style={{ fontSize: 11, color: '#7A6B63', marginBottom: 6 }}>{new Date(n.created_at).toLocaleDateString()}</div>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B5502E', background: 'rgba(181,80,46,0.09)', padding: '2px 8px', borderRadius: 100 }}>{n.category}</span>
-              {n.is_bookmarked && <span style={{ marginLeft: 6 }}>★</span>}
-            </button>
-          ))}
-        </div>
-
-        {/* Main note view */}
-        <div style={{ padding: '36px 48px', overflowY: 'auto' }}>
-          {!note ? (
-            <p style={{ color: '#7A6B63' }}>Select a note, or generate one for a topic you want to study.</p>
-          ) : (
-            <div style={{ maxWidth: 680 }}>
-              <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: '#B5502E', background: 'rgba(181,80,46,0.09)', padding: '4px 12px', borderRadius: 100 }}>{note.category}</span>
-                <button onClick={() => handleBookmark(note.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: note.is_bookmarked ? '#E0A458' : '#C4BAB3' }}>★</button>
-                <button onClick={() => handleDelete(note.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#7A6B63', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif" }} title="Delete Note">
-                  <span style={{ fontSize: 14 }}>🗑️</span> Delete
-                </button>
-              </div>
-              <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 24, fontWeight: 700, color: '#1C1917', margin: '16px 0 6px', lineHeight: 1.3 }}>{note.title}</h2>
-              <p style={{ fontSize: 13, color: '#7A6B63', margin: '0 0 28px' }}>{note.note_type.replace('_', ' ')} · {new Date(note.created_at).toLocaleString()}</p>
-
-              <NoteBody note={note} />
-
-              <div style={{ marginTop: 32, display: 'flex', gap: 12 }}>
-                <button onClick={() => navigate('interview')} style={{ background: 'linear-gradient(135deg, #B5502E, #C97350)', border: 'none', cursor: 'pointer', color: '#FAFAF8', fontSize: 13, fontWeight: 700, padding: '10px 20px', borderRadius: 100, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                  Practice this topic →
-                </button>
-              </div>
+          {/* Search bar & filter chips */}
+          <div className="px-4 py-3 border-b border-border/60 flex flex-col gap-3.5">
+            <div className="relative flex items-center">
+              <Search className="w-3.5 h-3.5 text-text-muted absolute left-3" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search study cards..."
+                className="w-full pl-9 pr-4 py-1.5 rounded-lg border border-border/60 bg-bg/40 text-xs focus:outline-none"
+              />
             </div>
-          )}
-        </div>
+
+            <div className="flex gap-2">
+              {[
+                { id: 'all', label: 'All Cards' },
+                { id: 'bookmarks', label: 'Starred' }
+              ].map((filter) => (
+                <button
+                  key={filter.id}
+                  onClick={() => setActiveFilter(filter.id as any)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-semibold transition-all cursor-pointer border ${
+                    activeFilter === filter.id
+                      ? 'bg-rust/10 border-rust text-rust'
+                      : 'border-border/80 text-text-muted hover:text-text'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Sidebar folders list */}
+          <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+            {filteredNotes.length === 0 ? (
+              <div className="py-12 text-center text-xs text-text-muted italic">
+                No matching study cards.
+              </div>
+            ) : (
+              filteredNotes.map((n) => {
+                const isSelected = selected === n.id
+                return (
+                  <button
+                    key={n.id}
+                    onClick={() => setSelected(n.id)}
+                    className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? 'border-rust bg-card-bg text-text shadow-sm shadow-rust/5'
+                        : 'border-transparent hover:bg-border/20 text-text-muted hover:text-text'
+                    }`}
+                  >
+                    <Folder className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isSelected ? 'text-rust' : 'text-text-muted/60'}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-xs leading-normal truncate">{n.title}</div>
+                      <div className="text-[10px] text-text-muted/60 mt-1 flex items-center justify-between">
+                        <span>{new Date(n.created_at).toLocaleDateString()}</span>
+                        {n.is_bookmarked && <Star className="w-3 h-3 text-accent fill-current" />}
+                      </div>
+                    </div>
+                  </button>
+                )
+              })
+            )}
+          </div>
+        </aside>
+
+        {/* Main Note Sheet View */}
+        <main className="flex-1 overflow-y-auto p-8 md:p-12 flex justify-center bg-bg/50">
+          <AnimatePresence mode="wait">
+            {!note ? (
+              <div className="text-center py-32 text-text-muted max-w-sm">
+                <BookOpen className="w-8 h-8 mx-auto text-text-muted/40 mb-3" />
+                <p className="text-xs">Select a study folder on the sidebar, or search weak topics.</p>
+              </div>
+            ) : (
+              <motion.div
+                key={note.id}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.3 }}
+                className="w-full max-w-2xl bg-card-bg border border-border rounded-2xl p-8 shadow-xl flex flex-col gap-6 relative glass-panel"
+              >
+                {/* Note metadata headers */}
+                <div className="flex items-center justify-between border-b border-border pb-5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[9px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-rust/10 text-rust">
+                      {note.category}
+                    </span>
+                    <span className="text-[9px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-border text-text-muted">
+                      {note.note_type.replace('_', ' ')}
+                    </span>
+                  </div>
+
+                  {/* Top actions */}
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => handleBookmark(note.id)} 
+                      className={`p-2 rounded-lg border border-border cursor-pointer transition-colors ${
+                        note.is_bookmarked ? 'bg-accent/15 border-accent text-accent' : 'bg-bg/40 text-text-muted hover:text-text'
+                      }`}
+                      aria-label="Star card"
+                    >
+                      <Star className={`w-3.5 h-3.5 ${note.is_bookmarked ? 'fill-current' : ''}`} />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(note.id)} 
+                      className="p-2 rounded-lg border border-border bg-bg/40 hover:bg-red-500/5 hover:border-red-500/30 text-text-muted hover:text-red-500 transition-colors cursor-pointer"
+                      title="Delete card"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Title */}
+                <div>
+                  <h1 className="font-display text-2xl md:text-3xl font-bold text-text tracking-tight">
+                    {note.title}
+                  </h1>
+                  <span className="text-[10px] text-text-muted/65 mt-1 block">
+                    Updated {new Date(note.created_at).toLocaleString()}
+                  </span>
+                </div>
+
+                {/* Study Body Content */}
+                <div className="flex-1">
+                  <NoteBody note={note} />
+                </div>
+
+                {/* Practice trigger action */}
+                <div className="border-t border-border pt-6 mt-6 flex justify-end">
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('active_roadmap_topic', note.title)
+                      navigate('interview')
+                    }}
+                    className="px-5 py-2.5 bg-rust hover:bg-rust/90 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-rust/10 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>Practice mock loops</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
+
       </div>
     </div>
   )

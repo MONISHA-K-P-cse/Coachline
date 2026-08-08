@@ -60,7 +60,12 @@ commentary before or after the JSON object.
 The JSON object MUST match exactly this schema:
 {{
   "steps": [
-    {{"title": <string>, "description": <string, 1-3 sentences>, "estimated_hours": <integer>}},
+    {{
+      "title": <string>, 
+      "description": <string, 1-3 sentences>, 
+      "estimated_hours": <integer>,
+      "questions": [<string, highly probable interview question>, <string>, <string>]
+    }},
     ...
   ]
 }}
@@ -83,6 +88,9 @@ Produce exactly {weeks} entries in "steps", one per week, in week order.
                     "title": str(s["title"]).strip(),
                     "description": str(s["description"]).strip(),
                     "estimated_hours": int(s.get("estimated_hours", 20)),
+                    "questions": [str(q).strip() for q in s.get("questions", []) if q][:3],
+                    "syllabus": [str(x).strip() for x in s.get("syllabus", []) if x],
+                    "notes": str(s.get("notes", "")).strip(),
                     "status": "pending",
                 }
                 for i, s in enumerate(raw_steps)

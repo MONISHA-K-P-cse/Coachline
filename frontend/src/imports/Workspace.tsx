@@ -3,37 +3,38 @@ import { Nav } from '../components/Nav'
 import { OrbitLoader } from '../components/OrbitLoader'
 import { useAuth } from '../lib/AuthContext'
 import * as api from '../lib/apiClient'
+import Editor from '@monaco-editor/react'
+import { 
+  FileText, Shield, Sparkles, Award, Zap, Activity,
+  Briefcase, TrendingUp, AlertTriangle, CheckCircle, 
+  ArrowRight, Download, Copy, Play, Upload, Code2
+} from 'lucide-react'
 
 type Page = 'landing' | 'login' | 'register' | 'onboarding' | 'workspace' | 'roadmap' | 'interview' | 'notes' | 'mastery' | 'mentor'
 interface Props { navigate: (p: Page) => void }
 
-// ─── Resume Skill Network — driven by the real resume agent's strengths/improvements ──
-
+// ─── Skill Network Graph SVG Component ───────────────────────────────────────
 interface SkillNode { id: string; label: string; x: number; y: number; strength: number; missing?: boolean }
 
 function layoutSkillNodes(strengths: string[], improvements: string[]): SkillNode[] {
   const nodes: SkillNode[] = [{ id: 'resume', label: 'Resume', x: 150, y: 110, strength: 0.9 }]
-
   const sCount = Math.min(strengths.length, 4)
   strengths.slice(0, 4).forEach((s, i) => {
-    // Distribute evenly in the upper hemisphere: -180 to 0 degrees
     const angle = -Math.PI + ((i + 1) * Math.PI) / (sCount + 1)
     nodes.push({
       id: `s-${i}`,
-      label: s.length > 22 ? s.slice(0, 20) + '…' : s,
+      label: s.length > 20 ? s.slice(0, 18) + '…' : s,
       x: 150 + Math.cos(angle) * 95,
       y: 115 + Math.sin(angle) * 75,
       strength: 0.75,
     })
   })
-
   const mCount = Math.min(improvements.length, 3)
   improvements.slice(0, 3).forEach((s, i) => {
-    // Distribute evenly in the lower hemisphere: 0 to 180 degrees
     const angle = ((i + 1) * Math.PI) / (mCount + 1)
     nodes.push({
       id: `m-${i}`,
-      label: s.length > 22 ? s.slice(0, 20) + '…' : s,
+      label: s.length > 20 ? s.slice(0, 18) + '…' : s,
       x: 150 + Math.cos(angle) * 130,
       y: 115 + Math.sin(angle) * 95,
       strength: 0,
@@ -45,13 +46,17 @@ function layoutSkillNodes(strengths: string[], improvements: string[]): SkillNod
 
 function ResumeSkillNetwork({ strengths, improvements }: { strengths: string[]; improvements: string[] }) {
   const [hov, setHov] = useState<string | null>(null)
-  const nodes = layoutSkillNodes(strengths, improvements)
+  
+  const finalStrengths = strengths.length > 0 ? strengths : ['Python APIs', 'React Design', 'SQL Tuning', 'System Dev']
+  const finalImprovements = improvements.length > 0 ? improvements : ['CI/CD Pipeline', 'Redis Caching', 'Thread Safety']
+  
+  const nodes = layoutSkillNodes(finalStrengths, finalImprovements)
   const root = nodes[0]
 
   return (
-    <svg viewBox="0 0 300 240" style={{ width: '100%', display: 'block' }}>
+    <svg viewBox="0 0 300 240" className="w-full block select-none">
       <defs>
-        <filter id="skill-glow" x="-60%" y="-60%" width="220%" height="220%">
+        <filter id="skill-glow" x="-40%" y="-40%" width="180%" height="180%">
           <feGaussianBlur stdDeviation="3.5" result="blur"/>
           <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
@@ -61,25 +66,42 @@ function ResumeSkillNetwork({ strengths, improvements }: { strengths: string[]; 
           key={`edge-${n.id}`}
           d={`M ${root.x} ${root.y} L ${n.x} ${n.y}`}
           fill="none"
-          stroke={n.missing ? 'rgba(181,80,46,0.35)' : `rgba(181,80,46,${0.12 + n.strength * 0.45})`}
-          strokeWidth={n.missing ? 0.8 : 1.4}
-          strokeDasharray={n.missing ? '3 3' : 'none'}
+          className="transition-all duration-300"
+          style={{ stroke: 'var(--rust)' }}
+          strokeOpacity={n.missing ? 0.25 : 0.65}
+          strokeWidth={n.missing ? 1 : 1.8}
+          strokeDasharray={n.missing ? '4 3' : 'none'}
         />
       ))}
       {nodes.map((node) => {
         const isHov = hov === node.id
         const r = node.id === 'resume' ? 14 : isHov ? 12 : 9
         return (
-          <g key={node.id} transform={`translate(${node.x},${node.y})`} style={{ cursor: 'pointer' }} onMouseEnter={() => setHov(node.id)} onMouseLeave={() => setHov(null)}>
+          <g 
+            key={node.id} 
+            transform={`translate(${node.x},${node.y})`} 
+            className="cursor-pointer"
+            onMouseEnter={() => setHov(node.id)} 
+            onMouseLeave={() => setHov(null)}
+          >
             {node.missing ? (
               <>
-                <circle r={r} fill="rgba(181,80,46,0.04)" stroke="rgba(181,80,46,0.40)" strokeWidth="1.2" strokeDasharray="3 2" />
-                <text textAnchor="middle" dy="4" fill="rgba(181,80,46,0.55)" fontSize="8" fontWeight="600" fontFamily="'Plus Jakarta Sans', sans-serif">+</text>
+                <circle r={r} style={{ fill: 'var(--bg)', stroke: 'var(--rust)' }} strokeWidth="1.2" strokeOpacity="0.5" strokeDasharray="3 2" />
+                <text textAnchor="middle" dy="3" style={{ fill: 'var(--rust)', fontSize: '8px', fontWeight: 'bold' }} fillOpacity="0.8">+</text>
               </>
             ) : (
-              <circle r={r} fill={`rgba(181,80,46,${0.3 + node.strength * 0.55})`} filter={isHov ? 'url(#skill-glow)' : 'none'} />
+              <circle r={r} style={{ fill: 'var(--rust)' }} filter={isHov ? 'url(#skill-glow)' : 'none'} />
             )}
-            <text dy={r + 13} textAnchor="middle" fill={node.missing ? 'rgba(181,80,46,0.50)' : isHov ? '#1C1917' : '#7A6B63'} fontSize={8.5} fontWeight={isHov ? 700 : 500} fontFamily="'Plus Jakarta Sans', sans-serif">
+            <text 
+              dy={r + 14} 
+              textAnchor="middle" 
+              style={{ 
+                fill: node.missing ? 'var(--text-muted)' : isHov ? 'var(--rust)' : 'var(--text)',
+                fontSize: '8.5px', 
+                fontWeight: isHov ? 700 : 500 
+              }}
+              fillOpacity={node.missing ? 0.6 : 0.85}
+            >
               {node.label}
             </text>
           </g>
@@ -88,8 +110,6 @@ function ResumeSkillNetwork({ strengths, improvements }: { strengths: string[]; 
     </svg>
   )
 }
-
-// ─── Main component ──────────────────────────────────────────────────────────
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime()
@@ -105,6 +125,7 @@ export default function Workspace({ navigate }: Props) {
   const { user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'resume' | 'bob'>('dashboard')
   const [dashboard, setDashboard] = useState<api.DashboardSummary | null>(null)
   const [resumes, setResumes] = useState<api.ResumeResponse[]>([])
   const [sessions, setSessions] = useState<api.InterviewSession[]>([])
@@ -170,67 +191,36 @@ export default function Workspace({ navigate }: Props) {
   const renderFormattedResume = (text: string) => {
     return text.split('\n').map((line, idx) => {
       const trimmed = line.trim();
-      if (!trimmed) return <div key={idx} style={{ height: '0.8em' }} />;
+      if (!trimmed) return <div key={idx} className="h-2" />;
       
       if (trimmed.startsWith('###') || trimmed.startsWith('##') || trimmed.startsWith('#')) {
         const cleanHeading = trimmed.replace(/[#*]/g, '').trim();
         return (
-          <h3 key={idx} style={{
-            fontFamily: "'Fraunces', Georgia, serif",
-            fontSize: '15px',
-            fontWeight: 700,
-            color: '#B5502E',
-            marginTop: '18px',
-            marginBottom: '8px',
-            borderBottom: '1.5px solid rgba(181,80,46,0.15)',
-            paddingBottom: '3px'
-          }}>
+          <h3 key={idx} className="font-display text-sm font-bold text-rust mt-4 mb-2 border-b border-border/60 pb-1">
             {cleanHeading}
           </h3>
-        );
+        )
       }
-      
       if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
         const cleanHeading = trimmed.replace(/\*/g, '').trim();
         return (
-          <h4 key={idx} style={{
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
-            fontSize: '13px',
-            fontWeight: 700,
-            color: '#1C1917',
-            marginTop: '12px',
-            marginBottom: '4px'
-          }}>
+          <h4 key={idx} className="font-semibold text-xs text-text mt-3 mb-1">
             {cleanHeading}
           </h4>
-        );
+        )
       }
-
       if (trimmed.startsWith('-') || trimmed.startsWith('*')) {
         const cleanBullet = trimmed.substring(1).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').trim();
         return (
-          <li key={idx} style={{
-            fontSize: '12.5px',
-            color: '#3C302A',
-            lineHeight: '1.6',
-            marginLeft: '14px',
-            marginBottom: '4px',
-            listStyleType: 'disc'
-          }} dangerouslySetInnerHTML={{ __html: cleanBullet }} />
-        );
+          <li key={idx} className="text-xs text-text-muted leading-relaxed ml-4 list-disc mb-1" dangerouslySetInnerHTML={{ __html: cleanBullet }} />
+        )
       }
-      
       const formattedLine = trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       return (
-        <p key={idx} style={{
-          fontSize: '12.5px',
-          color: '#4B3D37',
-          lineHeight: '1.6',
-          margin: '3px 0'
-        }} dangerouslySetInnerHTML={{ __html: formattedLine }} />
-      );
-    });
-  };
+        <p key={idx} className="text-xs text-text-muted leading-relaxed my-1" dangerouslySetInnerHTML={{ __html: formattedLine }} />
+      )
+    })
+  }
 
   const latestResume = resumes[0]
 
@@ -286,538 +276,631 @@ export default function Workspace({ navigate }: Props) {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#FAFAF8' }}>
+      <div className="min-h-screen bg-bg">
         <Nav page="workspace" navigate={navigate} />
-        <OrbitLoader label="Loading your workspace…" size={72} />
+        <OrbitLoader label="Syncing your workspace..." size={80} />
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#FAFAF8', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+    <div className="min-h-screen bg-bg text-text transition-colors duration-300 font-sans pb-16">
       <Nav page="workspace" navigate={navigate} />
-      <input ref={fileInputRef} type="file" accept=".pdf,.docx" onChange={handleFileSelected} style={{ display: 'none' }} />
+      <input ref={fileInputRef} type="file" accept=".pdf,.docx" onChange={handleFileSelected} className="hidden" />
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px clamp(16px, 4vw, 48px)' }}>
-        {/* Header */}
-        <div style={{ marginBottom: 40 }}>
-          <p style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#B5502E', marginBottom: 8 }}>
-            Your workspace
-          </p>
-          <h1 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', fontWeight: 700, color: '#1C1917', letterSpacing: '-0.02em', margin: 0 }}>
-            {user?.full_name ? `Welcome back, ${user.full_name.split(' ')[0]}.` : 'Welcome back.'}
-          </h1>
-          <p style={{ fontSize: 15, color: '#7A6B63', marginTop: 8, lineHeight: 1.6 }}>
-            {dashboard?.days_until_interview != null && dashboard.target_company
-              ? <>You have an interview with <strong style={{ color: '#B5502E' }}>{dashboard.target_company}</strong> in <strong style={{ color: '#B5502E' }}>{dashboard.days_until_interview} days</strong>. Here's where you stand.</>
-              : 'Add your target company and interview date in onboarding to see a countdown here.'}
-          </p>
-          {dashboard?.panic_mode && (
-            <div style={{ marginTop: 14, padding: '10px 16px', background: 'linear-gradient(160deg, #1C1917, #2E1F18)', borderRadius: 12, color: '#E0A458', fontSize: 13, fontWeight: 600 }}>
-              ⚠ Panic Mode: {dashboard.recommendations[0]}
-            </div>
-          )}
+      {/* Main Container */}
+      <div className="max-w-6xl mx-auto px-6 pt-10">
+        
+        {/* Welcome Header Banner */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 border-b border-border/50 pb-8">
+          <div>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-rust">Workspace Overview</span>
+            <h1 className="font-display text-3xl md:text-4xl font-bold tracking-tight text-text mt-1">
+              {user?.full_name ? `Welcome, ${user.full_name.split(' ')[0]}.` : 'Welcome back.'}
+            </h1>
+            <p className="text-xs text-text-muted mt-2">
+              {dashboard?.days_until_interview != null && dashboard.target_company ? (
+                <>
+                  You have an interview with <span className="text-rust font-bold">{dashboard.target_company}</span> in <span className="text-rust font-bold">{dashboard.days_until_interview} days</span>.
+                </>
+              ) : (
+                'Setup your target role and date in onboarding to begin calculations.'
+              )}
+            </p>
+          </div>
+
+          {/* Sub Navigation Tabs */}
+          <div className="flex bg-panel-bg p-1 rounded-xl border border-border/80 w-fit self-start">
+            {[
+              { id: 'dashboard', label: 'Bento Dashboard', icon: TrendingUp },
+              { id: 'resume', label: 'Resume Intelligence', icon: FileText },
+              { id: 'bob', label: 'IBM Bob Auditor', icon: Shield }
+            ].map((tab) => {
+              const Icon = tab.icon
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+                    activeTab === tab.id
+                      ? 'bg-card-bg text-rust shadow-sm'
+                      : 'text-text-muted hover:text-text'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {tab.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
-        {/* Top metrics — all real */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 32 }}>
-          {[
-            { label: 'Readiness Score', value: `${dashboard?.overall_readiness_score ?? 0}%`, sub: dashboard?.total_interviews_conducted ? `${dashboard.total_interviews_conducted} interviews so far` : 'No sessions yet', accent: '#B5502E' },
-            { label: 'Sessions This Week', value: String(sessionsThisWeek), sub: `${sessions.length} total`, accent: '#C97350' },
-            { label: 'Topics Mastered', value: `${masteredCount} / ${topicMastery.length || 0}`, sub: topicMastery.length ? `${topicMastery.length - masteredCount} in progress` : 'Not tracked yet', accent: '#E0A458' },
-            { label: 'Days to Interview', value: dashboard?.days_until_interview != null ? String(dashboard.days_until_interview) : '—', sub: dashboard?.target_role || 'Set in onboarding', accent: '#B5502E' },
-          ].map((m) => (
-            <div key={m.label} style={{ background: '#FFFFFF', borderRadius: 16, border: '1.5px solid rgba(181,80,46,0.12)', padding: '22px 24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-              <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7A6B63', marginBottom: 10 }}>{m.label}</div>
-              <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 32, fontWeight: 700, color: m.accent, letterSpacing: '-0.02em' }}>{m.value}</div>
-              <div style={{ fontSize: 12, color: '#7A6B63', marginTop: 4 }}>{m.sub}</div>
+        {/* ── BENTO DASHBOARD TAB ─────────────────────────────────────────── */}
+        {activeTab === 'dashboard' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            {/* Column 1 & 2: Primary metrics */}
+            <div className="md:col-span-2 flex flex-col gap-6">
+              
+              {/* Overall Readiness Bento Card */}
+              <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div>
+                  <span className="text-[10px] font-bold tracking-wider uppercase text-text-muted">Target Readiness</span>
+                  <h2 className="font-display text-xl font-bold text-text mt-1.5">Your Readiness Rating</h2>
+                  <p className="text-xs text-text-muted mt-2 leading-relaxed max-w-sm">
+                    Calculated from overall resume score and websocket mock performance metrics.
+                  </p>
+                  <div className="flex items-center gap-4 mt-6">
+                    <button
+                      onClick={() => navigate('interview')}
+                      className="px-4 py-2 text-xs font-semibold text-white bg-rust hover:bg-rust/90 rounded-lg transition-colors cursor-pointer"
+                    >
+                      Conduct Simulation
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('resume')}
+                      className="px-4 py-2 text-xs font-semibold text-text border border-border bg-bg/40 hover:bg-border/20 rounded-lg transition-colors cursor-pointer"
+                    >
+                      Audit Resume
+                    </button>
+                  </div>
+                </div>
+
+                {/* Ring Gauge Chart */}
+                <div className="relative flex items-center justify-center w-28 h-28">
+                  <svg className="w-full h-full transform -rotate-90">
+                    <circle cx="56" cy="56" r="46" stroke="var(--border)" strokeWidth="6" fill="transparent" />
+                    <circle 
+                      cx="56" 
+                      cy="56" 
+                      r="46" 
+                      stroke="var(--rust)" 
+                      strokeWidth="6" 
+                      fill="transparent" 
+                      strokeDasharray="289"
+                      strokeDashoffset={289 - (289 * (dashboard?.overall_readiness_score ?? 0)) / 100}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute text-center">
+                    <span className="font-display text-2xl font-bold text-rust">{dashboard?.overall_readiness_score ?? 0}%</span>
+                    <span className="block text-[8px] uppercase tracking-wider font-semibold text-text-muted mt-0.5">Ready</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Grid bento layout for sessions & targets */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                
+                {/* Stats Card: Sessions */}
+                <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel">
+                  <span className="text-[10px] font-bold tracking-wider uppercase text-text-muted">Weekly Practice</span>
+                  <div className="font-display text-4xl font-bold text-rust mt-3">{sessionsThisWeek}</div>
+                  <p className="text-xs text-text-muted mt-2">
+                    Sessions conducted in the last 7 days. ({sessions.length} total sessions).
+                  </p>
+                </div>
+
+                {/* Stats Card: Topics */}
+                <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel">
+                  <span className="text-[10px] font-bold tracking-wider uppercase text-text-muted">Topics Mastered</span>
+                  <div className="font-display text-4xl font-bold text-rust mt-3">
+                    {masteredCount} <span className="text-sm font-sans text-text-muted">/ {topicMastery.length}</span>
+                  </div>
+                  <p className="text-xs text-text-muted mt-2">
+                    Mastered score of 70+ required. {topicMastery.length - masteredCount} topics pending.
+                  </p>
+                </div>
+              </div>
+
+              {/* Recent Sessions list */}
+              <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel">
+                <h3 className="font-display text-base font-bold text-text mb-4">Latest Interview Sessions</h3>
+                {sessions.length === 0 ? (
+                  <p className="text-xs text-text-muted italic">No mock sessions completed yet.</p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {sessions.slice(0, 3).map((s, idx) => {
+                      const prev = sessions[idx + 1]
+                      const delta = prev ? Math.round(s.average_score - prev.average_score) : null
+                      return (
+                        <div key={s.id} className="flex items-center justify-between py-3 border-b border-border/40 last:border-0">
+                          <div>
+                            <span className="text-xs font-bold text-text">{s.role}</span>
+                            <div className="text-[10px] text-text-muted mt-0.5">
+                              {timeAgo(s.started_at)} · Status: {s.status}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-display text-lg font-bold text-rust">{Math.round(s.average_score)}</span>
+                            {delta !== null && (
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${delta >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                {delta >= 0 ? '+' : ''}{delta}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
-          ))}
-        </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24 }}>
-          {/* Left column */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {/* Sidebar Column 3: Recommendations & Weak Areas */}
+            <div className="flex flex-col gap-6">
+              
+              {/* Daily Focus Callout */}
+              <div className="p-6 rounded-2xl border border-rust/20 bg-gradient-to-br from-panel-bg to-bg relative overflow-hidden shadow-lg shadow-rust/5">
+                <span className="text-[10px] font-bold tracking-wider uppercase text-rust">Target Focus</span>
+                <h3 className="font-display text-base font-bold text-text mt-2 leading-tight">
+                  {dashboard?.weak_topics[0] || 'Analyze weak topics'}
+                </h3>
+                <p className="text-xs text-text-muted mt-3 leading-relaxed">
+                  Based on recent evaluations, prioritize mock loop simulations on this domain.
+                </p>
+                <button
+                  onClick={() => navigate('interview')}
+                  className="w-full mt-6 py-2.5 rounded-xl text-white font-semibold text-xs bg-rust hover:bg-rust/90 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <span>Practice Topic</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
 
-            {/* Resume analysis */}
-            <div style={{ background: '#FFFFFF', borderRadius: 18, border: '1.5px solid rgba(181,80,46,0.12)', padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-                <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 18, fontWeight: 700, color: '#1C1917', margin: 0 }}>Resume Analysis</h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Weak spots list */}
+              <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel">
+                <span className="text-[10px] font-bold tracking-wider uppercase text-text-muted">Weak Spots</span>
+                <div className="flex flex-col gap-3 mt-4">
+                  {dashboard?.weak_topics.length ? (
+                    dashboard.weak_topics.map((t) => (
+                      <div key={t} className="flex items-center gap-2">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rust/80 flex-shrink-0" />
+                        <span className="text-xs text-text-muted font-medium">{t}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-text-muted italic">Complete mock loops to scan weak competencies.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Navigation Links */}
+              <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel">
+                <span className="text-[10px] font-bold tracking-wider uppercase text-text-muted">Navigation Links</span>
+                <div className="flex flex-col gap-1.5 mt-4">
+                  {(['roadmap', 'notes', 'mastery', 'mentor'] as Page[]).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => navigate(p)}
+                      className="w-full flex items-center justify-between text-left text-xs font-semibold py-2.5 border-b border-border/40 last:border-0 text-text-muted hover:text-text capitalize transition-colors cursor-pointer"
+                    >
+                      <span>Study {p}</span>
+                      <ArrowRight className="w-3.5 h-3.5 opacity-60" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── RESUME INTELLIGENCE TAB ────────────────────────────────────── */}
+        {activeTab === 'resume' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Upload Area & Graph representation */}
+            <div className="lg:col-span-2 flex flex-col gap-6">
+              
+              {/* Skill network visualizer */}
+              <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="font-display text-base font-bold text-text">Resume Skill network</h3>
+                    <p className="text-xs text-text-muted mt-0.5">Identified keywords and targeted missing concepts.</p>
+                  </div>
                   {latestResume && (
-                    <div style={{ display: 'flex', background: '#F5F2EE', borderRadius: 8, padding: 3, gap: 2 }}>
-                      {(['scores', 'network'] as const).map((v) => (
-                        <button key={v} onClick={() => setResumeView(v)} style={{ background: resumeView === v ? '#FFFFFF' : 'none', border: 'none', cursor: 'pointer', borderRadius: 6, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: resumeView === v ? '#B5502E' : '#7A6B63', fontFamily: "'Plus Jakarta Sans', sans-serif", boxShadow: resumeView === v ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
-                          {v === 'network' ? 'Skill Map' : 'Scores'}
+                    <div className="flex bg-panel-bg p-0.5 rounded-lg border border-border/80">
+                      {[
+                        { id: 'scores', label: 'Detailed Summary' },
+                        { id: 'network', label: 'Constellation Map' }
+                      ].map((view) => (
+                        <button
+                          key={view.id}
+                          onClick={() => setResumeView(view.id as any)}
+                          className={`px-3 py-1 rounded-md text-[10px] font-semibold transition-all cursor-pointer ${
+                            resumeView === view.id
+                              ? 'bg-card-bg text-rust shadow-sm'
+                              : 'text-text-muted hover:text-text'
+                          }`}
+                        >
+                          {view.label}
                         </button>
                       ))}
                     </div>
                   )}
+                </div>
+
+                {/* Upload drag-and-drop placeholder */}
+                {uploadError && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-semibold rounded-xl mb-4">
+                    {uploadError}
+                  </div>
+                )}
+
+                {analyzing ? (
+                  <OrbitLoader label="Parsing Resume ATS metrics..." size={64} />
+                ) : !latestResume ? (
+                  <div className="flex flex-col items-center justify-center border-2 border-dashed border-border/80 hover:border-rust/40 rounded-2xl py-12 px-6 text-center cursor-pointer transition-colors" onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="w-8 h-8 text-rust/80 mb-3" />
+                    <span className="text-xs font-bold text-text">Upload Resume PDF / Word</span>
+                    <span className="text-[10px] text-text-muted mt-1">Accepts documents up to 5MB</span>
+                  </div>
+                ) : resumeView === 'scores' ? (
+                  <div className="flex flex-col gap-6">
+                    
+                    {/* ATS and overall counts */}
+                    <div className="grid grid-cols-3 gap-4 border-b border-border/40 pb-5">
+                      <div>
+                        <div className="font-display text-3xl font-bold text-rust">{latestResume.score}%</div>
+                        <span className="text-[9px] uppercase font-bold tracking-wider text-text-muted">Overall Score</span>
+                      </div>
+                      <div>
+                        <div className="font-display text-3xl font-bold text-accent">{latestResume.ats_score}%</div>
+                        <span className="text-[9px] uppercase font-bold tracking-wider text-text-muted">ATS Parsing</span>
+                      </div>
+                      <div>
+                        <div className="font-display text-3xl font-bold text-text">{latestResume.keyword_count}</div>
+                        <span className="text-[9px] uppercase font-bold tracking-wider text-text-muted">Keywords Count</span>
+                      </div>
+                    </div>
+
+                    {/* Summary description */}
+                    {latestResume.score_details?.summary && (
+                      <p className="text-xs text-text-muted italic leading-relaxed">
+                        "{latestResume.score_details.summary}"
+                      </p>
+                    )}
+
+                    {/* Strengths & Improvements */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="text-[10px] font-bold tracking-wider uppercase text-green-500 mb-3">Strengths</h4>
+                        <div className="flex flex-col gap-2">
+                          {(latestResume.score_details?.strengths ?? []).map((s, i) => (
+                            <div key={i} className="flex items-start gap-2 text-xs text-text-muted">
+                              <CheckCircle className="w-3.5 h-3.5 text-green-500/80 mt-0.5 flex-shrink-0" />
+                              <span>{s}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="text-[10px] font-bold tracking-wider uppercase text-rust mb-3">Improvements</h4>
+                        <div className="flex flex-col gap-2">
+                          {(latestResume.score_details?.improvements ?? []).map((s, i) => (
+                            <div key={i} className="flex items-start gap-2 text-xs text-text-muted">
+                              <AlertTriangle className="w-3.5 h-3.5 text-rust/80 mt-0.5 flex-shrink-0" />
+                              <span>{s}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-bg/40 rounded-xl border border-border/50 p-4">
+                    <ResumeSkillNetwork
+                      strengths={latestResume.score_details?.strengths ?? []}
+                      improvements={latestResume.score_details?.improvements ?? []}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Upload trigger button bar */}
+              {latestResume && !analyzing && (
+                <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-card-bg/60 glass-panel">
+                  <span className="text-xs text-text-muted">Need a fresh analysis?</span>
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={analyzing}
-                    style={{ background: 'linear-gradient(135deg, #B5502E, #C97350)', border: 'none', cursor: analyzing ? 'not-allowed' : 'pointer', color: '#FAFAF8', fontSize: 12, fontWeight: 700, padding: '7px 14px', borderRadius: 100, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                    className="px-4 py-2 text-xs font-semibold text-white bg-rust hover:bg-rust/90 rounded-lg transition-colors cursor-pointer"
                   >
-                    {latestResume ? 'Upload new resume' : 'Upload resume'}
+                    Upload New Version
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Sidebar Column: Bullet optimizations */}
+            <div className="flex flex-col gap-6">
+              
+              {/* Bullet Optimizer Card */}
+              <div className="p-6 rounded-2xl border border-rust/10 bg-gradient-to-br from-panel-bg to-bg relative overflow-hidden shadow-lg shadow-rust/5">
+                <span className="text-[10px] font-bold tracking-wider uppercase text-rust">Resume Tuning</span>
+                <h3 className="font-display text-base font-bold text-text mt-2 leading-tight">
+                  Bullet Points Optimizer
+                </h3>
+                <p className="text-xs text-text-muted mt-3 leading-relaxed">
+                  Rewrites your bullet points using the STAR method (Situation, Task, Action, Result) to capture metrics and tech indicators Bob scans for.
+                </p>
+                <button
+                  onClick={handleImproveResume}
+                  disabled={improving || !latestResume}
+                  className={`w-full mt-6 py-2.5 rounded-xl text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+                    improving || !latestResume ? 'bg-rust/40 cursor-not-allowed' : 'bg-rust hover:bg-rust/90 shadow'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{improving ? 'Improving Bullets...' : 'Optimize with AI'}</span>
+                </button>
+              </div>
+
+              {/* Rewrite Suggestions Preview widget */}
+              <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel">
+                <h3 className="font-display text-xs font-bold uppercase tracking-wider text-text-muted mb-4">
+                  Sample Suggestions
+                </h3>
+                {latestResume?.score_details?.rewrite_suggestions?.length ? (
+                  <div className="flex flex-col gap-3">
+                    {latestResume.score_details.rewrite_suggestions.slice(0, 2).map((s, i) => (
+                      <div key={i} className="text-xs border-b border-border/40 pb-3 last:border-0 last:pb-0">
+                        <div className="font-bold text-rust text-[10px] uppercase tracking-wide">{s.reason}</div>
+                        <p className="text-[11px] text-text-muted mt-1 italic">"{s.original}"</p>
+                        <p className="text-[11px] text-text font-medium mt-1">"✓ {s.rewritten}"</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-text-muted italic">Upload a resume to render rewrites.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── IBM BOB CODE AUDITOR TAB ───────────────────────────────────── */}
+        {activeTab === 'bob' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Monaco Editor IDE Layout */}
+            <div className="lg:col-span-2 flex flex-col gap-6">
+              
+              {/* Terminal IDE Frame */}
+              <div className="rounded-2xl border border-border bg-terminal-bg shadow-2xl overflow-hidden flex flex-col">
+                {/* File Header Tab bar */}
+                <div className="bg-bg/90 border-b border-border/80 px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
+                    </div>
+                    <span className="text-[10px] text-text-muted/80 font-mono tracking-tight ml-3">
+                      auditor_workspace.py
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-rust font-semibold flex items-center gap-1">
+                      <Code2 className="w-3.5 h-3.5" />
+                      IBM Granite Client
+                    </span>
+                  </div>
+                </div>
+
+                {/* Monaco Editor Container */}
+                <div className="p-1 min-h-[220px]">
+                  <Editor
+                    height="200px"
+                    defaultLanguage="python"
+                    theme="vs-dark"
+                    value={bobCode}
+                    onChange={(val) => setBobCode(val || '')}
+                    options={{
+                      minimap: { enabled: false },
+                      fontSize: 12,
+                      lineNumbers: 'on',
+                      roundedSelection: true,
+                      scrollBeyondLastLine: false,
+                      readOnly: false,
+                      padding: { top: 8, bottom: 8 },
+                      backgroundColor: 'transparent'
+                    }}
+                  />
+                </div>
+
+                {/* Execute Bar */}
+                <div className="bg-bg/50 border-t border-border/80 px-4 py-3 flex items-center justify-between">
+                  <span className="text-[10px] text-text-muted font-semibold">
+                    Python Sandbox environment active.
+                  </span>
+                  <button
+                    onClick={handleBobAudit}
+                    disabled={bobAuditing}
+                    className={`px-4 py-1.5 rounded-lg text-white text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${
+                      bobAuditing ? 'bg-rust/60 cursor-not-allowed' : 'bg-rust hover:bg-rust/90'
+                    }`}
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>{bobAuditing ? 'Auditing Code...' : 'Audit Code'}</span>
                   </button>
                 </div>
               </div>
 
-              {uploadError && (
-                <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: 'rgba(181,80,46,0.08)', color: '#B5502E', fontSize: 13 }}>{uploadError}</div>
-              )}
-
-              {analyzing ? (
-                <OrbitLoader label="Analyzing resume…" size={64} />
-              ) : !latestResume ? (
-                <div style={{ textAlign: 'center', padding: '32px 0', color: '#7A6B63', fontSize: 13 }}>
-                  Upload a PDF resume to get a real, content-based readiness score.
-                </div>
-              ) : resumeView === 'scores' ? (
-                <div>
-                  <div style={{ display: 'flex', gap: 24, marginBottom: 18 }}>
-                    <div>
-                      <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 32, fontWeight: 700, color: '#B5502E' }}>{latestResume.score}</div>
-                      <div style={{ fontSize: 11, color: '#7A6B63', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Overall Score</div>
-                    </div>
-                    <div>
-                      <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 32, fontWeight: 700, color: '#C97350' }}>{latestResume.ats_score}</div>
-                      <div style={{ fontSize: 11, color: '#7A6B63', textTransform: 'uppercase', letterSpacing: '0.06em' }}>ATS Score</div>
-                    </div>
-                    <div>
-                      <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 32, fontWeight: 700, color: '#E0A458' }}>{latestResume.keyword_count}</div>
-                      <div style={{ fontSize: 11, color: '#7A6B63', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Keywords</div>
-                    </div>
+              {/* Secure refactored comparisons */}
+              {bobAuditResult && (
+                <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel">
+                  <h3 className="font-display text-base font-bold text-text mb-4">IBM Bob Refactored Code Fix</h3>
+                  <div className="rounded-xl border border-border bg-terminal-bg p-4 overflow-x-auto text-left">
+                    <pre className="text-xs text-accent font-mono leading-relaxed">{bobAuditResult.refactored_code}</pre>
                   </div>
-                  {latestResume.score_details?.summary && (
-                    <p style={{ fontSize: 13, color: '#4B3D37', lineHeight: 1.6, margin: '0 0 14px', fontStyle: 'italic' }}>{latestResume.score_details.summary}</p>
-                  )}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: (latestResume.score_details?.rewrite_suggestions?.length ?? 0) > 0 ? 22 : 0 }}>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#15803d', marginBottom: 8 }}>Strengths</div>
-                      {(latestResume.score_details?.strengths ?? []).map((s) => (
-                        <div key={s} style={{ fontSize: 12.5, color: '#1C1917', marginBottom: 6 }}>✓ {s}</div>
-                      ))}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B5502E', marginBottom: 8 }}>Improvements</div>
-                      {(latestResume.score_details?.improvements ?? []).map((s) => (
-                        <div key={s} style={{ fontSize: 12.5, color: '#1C1917', marginBottom: 6 }}>→ {s}</div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {(latestResume.score_details?.rewrite_suggestions?.length ?? 0) > 0 && (
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B5502E', marginBottom: 10 }}>
-                        Rewrite Suggestions
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                        {latestResume.score_details!.rewrite_suggestions!.map((s, i) => (
-                          <div key={i} style={{ background: '#FFFFFF', border: '1.5px solid rgba(181,80,46,0.14)', borderRadius: 14, padding: '14px 16px' }}>
-                            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#7A6B63', marginBottom: 8 }}>
-                              {s.reason}
-                            </div>
-                            <div style={{ background: 'rgba(181,80,46,0.06)', borderRadius: 10, padding: '8px 12px', marginBottom: 6 }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, color: '#B5502E', marginRight: 6 }}>BEFORE</span>
-                              <span style={{ fontSize: 12.5, color: '#4B3D37' }}>{s.original}</span>
-                            </div>
-                            <div style={{ background: 'rgba(21,128,61,0.07)', borderRadius: 10, padding: '8px 12px' }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, color: '#15803d', marginRight: 6 }}>AFTER</span>
-                              <span style={{ fontSize: 12.5, color: '#1C1917' }}>{s.rewritten}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={handleImproveResume}
-                    disabled={improving}
-                    style={{
-                      marginTop: 20,
-                      width: '100%',
-                      background: 'rgba(181,80,46,0.06)',
-                      border: '1.5px dashed #B5502E',
-                      cursor: improving ? 'not-allowed' : 'pointer',
-                      color: '#B5502E',
-                      fontSize: 13,
-                      fontWeight: 700,
-                      padding: '11px 0',
-                      borderRadius: 10,
-                      fontFamily: "'Plus Jakarta Sans', sans-serif",
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    ✨ {improving ? 'Optimizing Resume...' : 'Improve Resume with AI'}
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <p style={{ fontSize: 12, color: '#7A6B63', margin: '0 0 12px' }}>
-                    Nodes are your resume's real strengths (solid) and improvement areas (dotted).
-                  </p>
-                  <ResumeSkillNetwork
-                    strengths={latestResume.score_details?.strengths ?? []}
-                    improvements={latestResume.score_details?.improvements ?? []}
-                  />
                 </div>
               )}
             </div>
 
-            {/* Recent sessions — real */}
-            <div style={{ background: '#FFFFFF', borderRadius: 18, border: '1.5px solid rgba(181,80,46,0.12)', padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-              <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 18, fontWeight: 700, color: '#1C1917', margin: '0 0 18px' }}>Recent Sessions</h2>
-              {sessions.length === 0 ? (
-                <p style={{ fontSize: 13, color: '#7A6B63', margin: 0 }}>No mock interviews yet — start one to see it here.</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {sessions.slice(0, 5).map((s, i) => {
-                    const prev = sessions[i + 1]
-                    const delta = prev ? Math.round(s.average_score - prev.average_score) : null
-                    return (
-                      <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(181,80,46,0.08)' }}>
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: '#1C1917' }}>{s.role}</div>
-                          <div style={{ fontSize: 12, color: '#7A6B63', marginTop: 2 }}>{timeAgo(s.started_at)} · {s.status}</div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 20, fontWeight: 700, color: '#B5502E' }}>{Math.round(s.average_score)}</div>
-                          {delta !== null && (
-                            <div style={{ fontSize: 11, color: delta >= 0 ? '#16a34a' : '#dc2626', fontWeight: 600 }}>{delta >= 0 ? '+' : ''}{delta}</div>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* IBM Bob Code Auditor */}
-            <div style={{ background: '#FFFFFF', borderRadius: 18, border: '1.5px solid rgba(181,80,46,0.12)', padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-                <div>
-                  <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 18, fontWeight: 700, color: '#1C1917', margin: 0 }}>IBM Bob Code Auditor</h2>
-                  <p style={{ fontSize: 12, color: '#7A6B63', marginTop: 4, margin: 0 }}>Select a coding challenge and run an agentic vulnerability review.</p>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
+            {/* Sidebar Column: Vulnerability list & timeline */}
+            <div className="flex flex-col gap-6">
+              
+              {/* Select Security loop config */}
+              <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel">
+                <span className="text-[10px] font-bold tracking-wider uppercase text-text-muted">Auditing Loop</span>
+                <h3 className="font-display text-base font-bold text-text mt-1.5">Select Vulnerability</h3>
+                <div className="mt-4">
                   <select
                     value={bobChallengeId}
                     onChange={(e) => setBobChallengeId(e.target.value)}
-                    style={{
-                      background: '#FAFAF8',
-                      border: '1px solid rgba(181,80,46,0.2)',
-                      borderRadius: 8,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: '#4B3D37',
-                      padding: '4px 8px',
-                      fontFamily: "'Plus Jakarta Sans', sans-serif"
-                    }}
+                    className="w-full px-3 py-2 rounded-xl border border-border bg-bg/50 text-xs font-semibold text-text focus:outline-none focus:border-rust/80 transition-colors"
                   >
-                    <option value="sql_injection">SQL Injection Challenge</option>
-                    <option value="concurrency_race">Race Condition Challenge</option>
-                    <option value="cors_security">CORS Wildcard Challenge</option>
-                    <option value="xss_scripting">XSS Scripting Challenge</option>
-                    <option value="path_traversal">Path Traversal Challenge</option>
+                    <option value="sql_injection">SQL Injection</option>
+                    <option value="concurrency_race">Race Conditions</option>
+                    <option value="cors_security">CORS Wildcards</option>
+                    <option value="xss_scripting">XSS Scripting</option>
+                    <option value="path_traversal">Path Traversal</option>
                   </select>
                 </div>
               </div>
 
-              {/* Code Editor Panel */}
-              <div style={{ position: 'relative', background: '#1C1917', borderRadius: 12, border: '1.5px solid rgba(255,255,255,0.08)', overflow: 'hidden', marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#261A13', padding: '8px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#E0A458' }}>Source Code Editor</span>
-                  <span style={{ fontSize: 11, color: 'rgba(250,250,248,0.5)' }}>Python / JavaScript</span>
-                </div>
-                <textarea
-                  value={bobCode}
-                  onChange={(e) => setBobCode(e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: 120,
-                    background: 'none',
-                    border: 'none',
-                    outline: 'none',
-                    color: '#A7F3D0',
-                    fontFamily: "'Courier New', Courier, monospace",
-                    fontSize: 12,
-                    padding: 16,
-                    resize: 'none',
-                    lineHeight: 1.5
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginBottom: bobAuditResult ? 20 : 0 }}>
-                <button
-                  onClick={handleBobAudit}
-                  disabled={bobAuditing}
-                  style={{
-                    background: 'linear-gradient(135deg, #B5502E, #E0A458)',
-                    border: 'none',
-                    cursor: bobAuditing ? 'not-allowed' : 'pointer',
-                    color: '#FAFAF8',
-                    fontSize: 12.5,
-                    fontWeight: 700,
-                    padding: '8px 18px',
-                    borderRadius: 100,
-                    fontFamily: "'Plus Jakarta Sans', sans-serif"
-                  }}
-                >
-                  {bobAuditing ? 'Bob is Planning & Auditing...' : '🚀 Audit with IBM Bob'}
-                </button>
-              </div>
-
-              {/* Audit Results Panel */}
-              {bobAuditResult && (
-                <div style={{ borderTop: '1px solid rgba(181,80,46,0.1)', paddingTop: 20 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: 16 }}>
-                    <div>
-                      <h4 style={{ fontSize: 11, fontWeight: 700, color: '#B5502E', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-                        Bob's Multi-Step Plan
-                      </h4>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {bobAuditResult.plan.map((stepStr, idx) => (
-                          <div key={idx} style={{ display: 'flex', gap: 8, fontSize: 12, color: '#4B3D37', lineHeight: 1.4 }}>
-                            <span style={{ color: '#B5502E', fontWeight: 700 }}>{idx + 1}.</span>
-                            <span>{stepStr}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 style={{ fontSize: 11, fontWeight: 700, color: '#B5502E', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-                        Vulnerabilities Flagged
-                      </h4>
-                      {bobAuditResult.vulnerabilities.map((v, i) => (
-                        <div key={i} style={{ background: v.severity === 'High' ? 'rgba(220,38,38,0.06)' : 'rgba(245,158,11,0.06)', border: v.severity === 'High' ? '1px solid #DC2626' : '1px solid #F59E0B', borderRadius: 10, padding: 12, fontSize: 12 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, marginBottom: 4 }}>
-                            <span style={{ color: v.severity === 'High' ? '#DC2626' : '#D97706' }}>[{v.severity} Severity]</span>
-                            <span style={{ color: '#7A6B63' }}>Line {v.line}</span>
-                          </div>
-                          <div style={{ color: '#1C1917', lineHeight: 1.4, marginBottom: 6 }}>{v.issue}</div>
-                          <div style={{ color: '#16A34A', fontWeight: 600 }}>💡 Fix: {v.fix}</div>
+              {/* Audit Scan list */}
+              {bobAuditResult ? (
+                <div className="flex flex-col gap-6">
+                  
+                  {/* Step audit timeline */}
+                  <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel">
+                    <span className="text-[10px] font-bold tracking-wider uppercase text-text-muted">Timeline Audit Plan</span>
+                    <div className="flex flex-col gap-4 mt-4">
+                      {bobAuditResult.plan.map((step, idx) => (
+                        <div key={idx} className="flex gap-3 text-xs leading-relaxed">
+                          <span className="font-bold text-rust">{idx + 1}.</span>
+                          <span className="text-text-muted">{step}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div style={{ marginTop: 18 }}>
-                    <h4 style={{ fontSize: 11, fontWeight: 700, color: '#16A34A', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-                      IBM Bob Refactored Code
-                    </h4>
-                    <pre style={{
-                      margin: 0,
-                      background: '#1C1917',
-                      borderRadius: 10,
-                      padding: 16,
-                      color: '#E0A458',
-                      fontFamily: "'Courier New', Courier, monospace",
-                      fontSize: 12,
-                      overflowX: 'auto',
-                      lineHeight: 1.5,
-                      textAlign: 'left'
-                    }}>
-                      {bobAuditResult.refactored_code}
-                    </pre>
+                  {/* Flagged logs */}
+                  <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel flex flex-col gap-4">
+                    <span className="text-[10px] font-bold tracking-wider uppercase text-text-muted">Flags Details</span>
+                    {bobAuditResult.vulnerabilities.map((v, i) => (
+                      <div key={i} className="text-xs p-4 rounded-xl bg-red-500/5 border border-red-500/25 flex flex-col gap-2">
+                        <div className="flex items-center justify-between font-bold">
+                          <span className="text-red-500">[{v.severity} Severity]</span>
+                          <span className="text-text-muted">Line {v.line}</span>
+                        </div>
+                        <p className="text-text font-semibold leading-relaxed">{v.issue}</p>
+                        <p className="text-green-500 font-semibold mt-1">💡 Fix: {v.fix}</p>
+                      </div>
+                    ))}
                   </div>
+
+                </div>
+              ) : (
+                <div className="p-6 rounded-2xl border border-border bg-card-bg/40 text-center py-10">
+                  <p className="text-xs text-text-muted italic leading-relaxed">
+                    Choose a challenge, review python templates, and press "Audit Code" to scan security risks.
+                  </p>
                 </div>
               )}
             </div>
-
           </div>
-
-          {/* Right sidebar */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ background: 'linear-gradient(160deg, #1C1917, #2E1F18)', borderRadius: 18, border: '1.5px solid rgba(224,164,88,0.20)', padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.12)' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: '#E0A458', marginBottom: 12 }}>Today's Focus</div>
-              <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 18, fontWeight: 700, color: '#FAFAF8', lineHeight: 1.35, marginBottom: 16 }}>
-                {dashboard?.weak_topics[0] || dashboard?.recommendations[0] || 'Start a mock interview to build your first focus area.'}
-              </div>
-              <button onClick={() => navigate('interview')} style={{ width: '100%', background: 'linear-gradient(135deg, #B5502E, #E0A458)', border: 'none', cursor: 'pointer', color: '#FAFAF8', fontSize: 13, fontWeight: 700, padding: '11px 0', borderRadius: 10, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                Start Session →
-              </button>
-            </div>
-
-            <div style={{ background: '#FFFFFF', borderRadius: 18, border: '1.5px solid rgba(181,80,46,0.12)', padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: '#B5502E', marginBottom: 14 }}>Weak Spots</div>
-              {dashboard?.weak_topics.length ? dashboard.weak_topics.map((t) => (
-                <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#B5502E', flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: '#4B3D37' }}>{t}</span>
-                </div>
-              )) : (
-                <p style={{ fontSize: 12.5, color: '#7A6B63', margin: 0 }}>None flagged yet — complete a mock interview to surface weak topics.</p>
-              )}
-            </div>
-
-            <div style={{ background: '#F5F2EE', borderRadius: 18, border: '1.5px solid rgba(181,80,46,0.10)', padding: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: '#7A6B63', marginBottom: 14 }}>Quick Nav</div>
-              {(['roadmap', 'notes', 'mastery', 'mentor'] as Page[]).map((p) => (
-                <button key={p} onClick={() => navigate(p)} style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0', fontSize: 14, fontWeight: 600, color: '#4B3D37', fontFamily: "'Plus Jakarta Sans', sans-serif", borderBottom: '1px solid rgba(181,80,46,0.08)', textTransform: 'capitalize' }}>
-                  {p} →
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        )}
       </div>
+
+      {/* ── MODAL: RESUME IMPROVEMENTS VIEW ──────────────────────────────── */}
       {showImproveModal && improvedResume && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          backgroundColor: 'rgba(28,25,23,0.5)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: 24,
-          boxSizing: 'border-box'
-        }}>
-          <div style={{
-            background: '#FFFFFF',
-            borderRadius: 20,
-            border: '1.5px solid rgba(181,80,46,0.16)',
-            width: '100%',
-            maxWidth: 860,
-            maxHeight: '90vh',
-            display: 'flex',
-            flexDirection: 'column',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.12)',
-            overflow: 'hidden'
-          }}>
-            <div style={{ padding: 24, borderBottom: '1px solid rgba(181,80,46,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="fixed inset-0 w-screen h-screen bg-bg/50 backdrop-blur-md flex items-center justify-center z-50 p-6">
+          <div className="w-full max-w-5xl max-h-[85vh] bg-card-bg rounded-2xl border border-border flex flex-col overflow-hidden shadow-2xl glass-panel">
+            {/* Header */}
+            <div className="p-5 border-b border-border/80 flex items-center justify-between">
               <div>
-                <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 20, fontWeight: 700, color: '#1C1917', margin: 0 }}>
-                  Optimized Resume Suggestions
-                </h2>
-                <p style={{ fontSize: 12, color: '#7A6B63', margin: '4px 0 0' }}>
-                  AI-improved version incorporating feedback to maximize ATS and technical readiness.
-                </p>
+                <h2 className="font-display text-lg font-bold text-text">Optimized Resume suggestions</h2>
+                <p className="text-[10px] text-text-muted mt-0.5">Applied modifications to increase ATS and secure loop readiness.</p>
               </div>
-              <button
+              <button 
                 onClick={() => setShowImproveModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#7A6B63' }}
+                className="text-text-muted hover:text-text text-lg cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div style={{ background: 'rgba(181,80,46,0.05)', borderRadius: 12, padding: 18, border: '1px solid rgba(181,80,46,0.10)' }}>
-                <h4 style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B5502E', margin: '0 0 10px' }}>
-                  Key Optimizations Applied
-                </h4>
-                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: '#4B3D37', lineHeight: 1.6 }}>
-                  {improvedResume.changes_made.map((change, i) => (
-                    <li key={i}>{change}</li>
-                  ))}
+            {/* Scrollable Comparison Content */}
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+              
+              {/* Changes applied callout */}
+              <div className="p-4 rounded-xl bg-rust/5 border border-rust/15 text-xs text-text-muted">
+                <span className="font-bold text-rust block mb-2 uppercase tracking-wider text-[10px]">Optimizations Applied</span>
+                <ul className="list-disc ml-4 flex flex-col gap-1.5">
+                  {improvedResume.changes_made.map((c, i) => <li key={i}>{c}</li>)}
                 </ul>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              {/* Side by side comparison panels */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Original Preview */}
                 <div>
-                  <h4 style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7A6B63', margin: '0 0 8px' }}>
-                    Original Text Preview
-                  </h4>
-                  <div style={{
-                    border: '1.5px solid rgba(181,80,46,0.08)',
-                    borderRadius: 12,
-                    padding: 16,
-                    height: 280,
-                    overflowY: 'auto',
-                    fontSize: 12.5,
-                    color: '#7A6B63',
-                    lineHeight: 1.6,
-                    whiteSpace: 'pre-wrap',
-                    background: '#FAFAF8'
-                  }}>
-                    {latestResume?.parsed_text_preview || 'Original text not available.'}
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-text-muted mb-2 block">Original Document</span>
+                  <div className="p-5 rounded-xl border border-border/60 bg-bg/40 text-xs text-text-muted leading-relaxed font-sans overflow-y-auto h-72 white-space-pre">
+                    {latestResume?.parsed_text_preview || 'Original parsed text preview.'}
                   </div>
                 </div>
 
+                {/* Optimized Render */}
                 <div>
-                  <h4 style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B5502E', margin: '0 0 8px' }}>
-                    Optimized Resume Document
-                  </h4>
-                  <div style={{
-                    border: '1.5px solid rgba(181,80,46,0.15)',
-                    borderRadius: 12,
-                    padding: '24px 28px',
-                    height: 280,
-                    overflowY: 'auto',
-                    background: '#FFFFFF',
-                    boxShadow: '0 4px 18px rgba(181,80,46,0.05)',
-                    fontFamily: "'Plus Jakarta Sans', sans-serif",
-                    textAlign: 'left'
-                  }}>
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-rust mb-2 block">AI Improved Document</span>
+                  <div className="p-6 rounded-xl border border-rust/20 bg-card-bg text-xs leading-relaxed font-sans overflow-y-auto h-72 shadow-inner">
                     {renderFormattedResume(improvedResume.improved_text)}
                   </div>
                 </div>
               </div>
             </div>
 
-            <div style={{ padding: 20, borderTop: '1px solid rgba(181,80,46,0.08)', display: 'flex', justifyContent: 'flex-end', gap: 12, background: '#FAFAF8' }}>
+            {/* Footer Action Bar */}
+            <div className="bg-bg/40 border-t border-border p-4 flex items-center justify-end gap-3">
               <button
                 onClick={() => setShowImproveModal(false)}
-                style={{
-                  background: 'none',
-                  border: '1.5px solid rgba(181,80,46,0.20)',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  padding: '9px 18px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: '#7A6B63'
-                }}
+                className="px-4 py-2 border border-border hover:bg-border/20 rounded-lg text-xs font-semibold text-text-muted hover:text-text transition-colors cursor-pointer"
               >
-                Close
+                Close View
               </button>
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(improvedResume.improved_text)
                   alert('Copied improved text to clipboard!')
                 }}
-                style={{
-                  background: 'none',
-                  border: '1.5px solid rgba(181,80,46,0.25)',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  padding: '9px 18px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: '#B5502E'
-                }}
+                className="px-4 py-2 border border-rust/35 hover:bg-rust/5 rounded-lg text-xs font-semibold text-rust transition-colors cursor-pointer flex items-center gap-1.5"
               >
-                Copy Text
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy Text</span>
               </button>
               <button
                 onClick={handleDownloadPDF}
                 disabled={downloadingPdf}
-                style={{
-                  background: 'linear-gradient(135deg, #B5502E, #C97350)',
-                  border: 'none',
-                  borderRadius: 8,
-                  cursor: downloadingPdf ? 'not-allowed' : 'pointer',
-                  padding: '9px 20px',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: '#FAFAF8'
-                }}
+                className="px-4 py-2 bg-rust hover:bg-rust/90 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow"
               >
-                {downloadingPdf ? 'Generating PDF...' : 'Download PDF'}
+                <Download className="w-3.5 h-3.5" />
+                <span>{downloadingPdf ? 'Downloading PDF...' : 'Download PDF'}</span>
               </button>
             </div>
           </div>

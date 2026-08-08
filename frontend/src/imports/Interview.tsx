@@ -3,21 +3,16 @@ import { Nav } from '../components/Nav'
 import { OrbitLoader } from '../components/OrbitLoader'
 import { useAuth } from '../lib/AuthContext'
 import { interviewWebSocketUrl } from '../lib/apiClient'
+import { motion, AnimatePresence } from 'framer-motion'
+import { 
+  Video, Mic, MicOff, Volume2, StopCircle, RefreshCw, 
+  ArrowRight, Award, Clock, Star, Flame, CheckCircle, BarChart3, AlertCircle 
+} from 'lucide-react'
 
 type Page = 'landing' | 'login' | 'register' | 'onboarding' | 'workspace' | 'roadmap' | 'interview' | 'notes' | 'mastery' | 'mentor'
 interface Props { navigate: (p: Page) => void }
 
 type Stage = 'ready' | 'connecting' | 'answering' | 'evaluating' | 'feedback' | 'ended' | 'error'
-
-// A single "answer" turn makes two sequential model calls before
-// responding (eval, then next question) - weak-topic note regeneration now
-// runs *after* the response is sent, so it no longer inflates this wait.
-// Each call has its own ~240s backend timeout, so the client-side
-// "something's actually wrong" threshold sits comfortably above both
-// calls' worst case, not just one. The initial connect has no model call
-// at all, so it gets a much shorter budget.
-const CONNECT_TIMEOUT_MS = 15_000
-const RESPONSE_TIMEOUT_MS = 520_000
 
 interface EvalPayload {
   previous_score: number
@@ -49,9 +44,6 @@ export default function Interview({ navigate }: Props) {
   const wsRef = useRef<WebSocket | null>(null)
   const waitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Distinguishes a close we triggered ourselves (timeout bail-out, end of
-  // session) from one the server/network initiated, so onclose only shows
-  // an error for the latter.
   const expectedCloseRef = useRef(false)
 
   const clearWaitTimer = () => {
@@ -66,16 +58,10 @@ export default function Interview({ navigate }: Props) {
     setSlowWait(false)
   }
 
-  // Arms a "give up and let the user retry" timer for whatever we're
-  // currently waiting on the socket for. Any real response clears it via
-  // clearWaitTimer(); if it fires first, the connection is presumed stuck
-  // and we surface a visible error instead of spinning forever. A shorter
-  // "still working" nudge fires first so a merely-slow (not stuck) call
-  // doesn't look identical to a hang while it's still in flight.
   const armWaitTimer = (ms: number, message: string) => {
     clearWaitTimer()
-    if (ms > 20_000) {
-      slowTimerRef.current = setTimeout(() => setSlowWait(true), 20_000)
+    if (ms > 20000) {
+      slowTimerRef.current = setTimeout(() => setSlowWait(true), 20000)
     }
     waitTimerRef.current = setTimeout(() => {
       expectedCloseRef.current = true
@@ -149,29 +135,31 @@ export default function Interview({ navigate }: Props) {
             break
           }
         }
-        
-        if (!selectedVoice && voices.length) {
-          selectedVoice = voices.find(v => v.lang.startsWith('en')) || voices[0]
-        }
-        
         if (selectedVoice) {
           utterance.voice = selectedVoice
         }
-
-        utterance.onend = () => setIsSpeaking(false)
-        utterance.onerror = () => setIsSpeaking(false)
+        utterance.rate = 1.05
+        utterance.pitch = 1.0
+        
+        utterance.onend = () => {
+          setIsSpeaking(false)
+        }
+        utterance.onerror = () => {
+          setIsSpeaking(false)
+        }
+        
         setIsSpeaking(true)
         window.speechSynthesis.speak(utterance)
       }
     } else {
-      alert("Text-to-Speech is not supported in this browser.")
+      alert('Text-to-speech is not supported in this browser.')
     }
   }
 
   const toggleRecording = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SpeechRecognition) {
-      alert("Speech Recognition is not supported in this browser. Please use a browser like Chrome, Safari or Edge.")
+      alert('Speech recognition is not supported in this browser. Please type your answer.')
       return
     }
 
@@ -187,28 +175,24 @@ export default function Interview({ navigate }: Props) {
       rec.onstart = () => {
         setIsRecording(true)
       }
-
-      rec.onresult = (event: any) => {
+      rec.onresult = (e: any) => {
         let finalTrans = ''
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTrans += event.results[i][0].transcript
+        for (let i = e.resultIndex; i < e.results.length; ++i) {
+          if (e.results[i].isFinal) {
+            finalTrans += e.results[i][0].transcript + ' '
           }
         }
         if (finalTrans) {
-          setAnswer((prev) => prev + (prev.endsWith(' ') || prev === '' ? '' : ' ') + finalTrans)
+          setAnswer(prev => prev + finalTrans)
         }
       }
-
       rec.onerror = (e: any) => {
-        console.error("Speech recognition error", e)
+        console.error('Speech recognition error', e)
         setIsRecording(false)
       }
-
       rec.onend = () => {
         setIsRecording(false)
       }
-
       recognitionRef.current = rec
       rec.start()
     }
@@ -216,94 +200,121 @@ export default function Interview({ navigate }: Props) {
 
   const connectAndStart = () => {
     if (!user) return
-    setStage('connecting')
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+    }
+    setIsSpeaking(false)
+    setIsRecording(false)
+    setAnswer('')
     setErrorMsg(null)
+    setFeedback(null)
+    setEnded(null)
+    setTurnNumber(1)
+    setUnlockedNextWeek(false)
+
+    const savedWeek = localStorage.getItem('active_roadmap_week')
+    const savedTopic = localStorage.getItem('active_roadmap_topic')
+    const weekVal = savedWeek ? parseInt(savedWeek) : 1
+    setPracticeWeek(weekVal)
+
+    setStage('connecting')
+    armWaitTimer(15000, "Timed out establishing secure connection to IBM interview agent.")
     expectedCloseRef.current = false
+
     const ws = new WebSocket(interviewWebSocketUrl(user.id))
     wsRef.current = ws
 
-    armWaitTimer(CONNECT_TIMEOUT_MS, 'Could not connect to the interview server. Please try again.')
-
     ws.onopen = () => {
-      const weekStr = localStorage.getItem('active_roadmap_week')
-      const topicStr = localStorage.getItem('active_roadmap_topic')
-      const weekVal = weekStr ? parseInt(weekStr) : 1
-      setPracticeWeek(weekVal)
-      setUnlockedNextWeek(false)
       localStorage.setItem('active_roadmap_week_for_unlock', weekVal.toString())
       ws.send(JSON.stringify({
         event: 'start',
         role,
         week: weekVal,
-        topic: topicStr || undefined
+        topic: savedTopic || undefined
       }))
       localStorage.removeItem('active_roadmap_week')
       localStorage.removeItem('active_roadmap_topic')
-      
-      // First question has no model call behind it, so the same short
-      // connect budget applies to it too.
-      armWaitTimer(CONNECT_TIMEOUT_MS, 'The interview server accepted the connection but never sent a question. Please try again.')
+      armWaitTimer(15000, 'The interview server accepted the connection but never sent a question. Please try again.')
     }
 
-    ws.onmessage = (evt) => {
+    ws.onmessage = (e) => {
       clearWaitTimer()
-      const data = JSON.parse(evt.data)
-      if (data.event === 'question') {
-        if ('speechSynthesis' in window) {
-          window.speechSynthesis.cancel()
-          setIsSpeaking(false)
-        }
-        setQuestion(data.question)
-        setMode(data.mode ?? 'standard')
-        setTurnNumber(data.turn_number)
-        setStage('answering')
-        setTimeout(() => textareaRef.current?.focus(), 100)
-      } else if (data.event === 'eval_and_next') {
-        if ('speechSynthesis' in window) {
-          window.speechSynthesis.cancel()
-          setIsSpeaking(false)
-        }
-        setFeedback(data as EvalPayload)
-        setStage('feedback')
-      } else if (data.event === 'ended') {
-        expectedCloseRef.current = true
-        if ('speechSynthesis' in window) {
-          window.speechSynthesis.cancel()
-          setIsSpeaking(false)
-        }
-        
-        // Progress unlock check
-        const weekForUnlock = localStorage.getItem('active_roadmap_week_for_unlock')
-        if (weekForUnlock) {
-          const completedWeek = parseInt(weekForUnlock)
-          const currentUnlocked = parseInt(localStorage.getItem('roadmap_max_unlocked') || '1')
-          if (completedWeek === currentUnlocked && data.average_score >= 50) {
-            localStorage.setItem('roadmap_max_unlocked', (completedWeek + 1).toString())
-            setUnlockedNextWeek(true)
+      try {
+        const data = JSON.parse(e.data)
+        if (data.event === 'question') {
+          if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel()
+            setIsSpeaking(false)
           }
-          localStorage.removeItem('active_roadmap_week_for_unlock')
-        }
+          setQuestion(data.question)
+          setTurnNumber(data.turn_number)
+          setMode(data.mode ?? 'standard')
+          setAnswer('')
+          setStage('answering')
+          
+          setTimeout(() => {
+            if ('speechSynthesis' in window) {
+              window.speechSynthesis.cancel()
+              const cleanText = data.question.replace(/[*#_`]/g, '')
+              const utterance = new SpeechSynthesisUtterance(cleanText)
+              utterance.onend = () => setIsSpeaking(false)
+              utterance.onerror = () => setIsSpeaking(false)
+              setIsSpeaking(true)
+              window.speechSynthesis.speak(utterance)
+            }
+          }, 300)
+        } else if (data.event === 'eval_and_next') {
+          if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel()
+            setIsSpeaking(false)
+          }
+          setFeedback(data as EvalPayload)
+          setStage('feedback')
+        } else if (data.event === 'ended') {
+          expectedCloseRef.current = true
+          if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel()
+            setIsSpeaking(false)
+          }
+          
+          const weekForUnlock = localStorage.getItem('active_roadmap_week_for_unlock')
+          if (weekForUnlock) {
+            const completedWeek = parseInt(weekForUnlock)
+            const currentUnlocked = parseInt(localStorage.getItem('roadmap_max_unlocked') || '1')
+            if (completedWeek === currentUnlocked && data.average_score >= 50) {
+              localStorage.setItem('roadmap_max_unlocked', (completedWeek + 1).toString())
+              setUnlockedNextWeek(true)
+            }
+            localStorage.removeItem('active_roadmap_week_for_unlock')
+          }
 
-        setEnded({ average_score: data.average_score, scores_breakdown: data.scores_breakdown })
-        setStage('ended')
-      } else if (data.event === 'error') {
-        setErrorMsg(data.message)
+          setEnded({
+            average_score: data.average_score,
+            scores_breakdown: data.scores_breakdown
+          })
+          setStage('ended')
+          ws.close()
+        } else if (data.event === 'error') {
+          setErrorMsg(data.message)
+          setStage('error')
+        }
+      } catch (err) {
+        console.error('Socket JSON error', err)
+      }
+    }
+
+    ws.onclose = () => {
+      clearWaitTimer()
+      if (!expectedCloseRef.current) {
+        setErrorMsg("WebSocket connection closed unexpectedly.")
         setStage('error')
       }
     }
 
     ws.onerror = () => {
       clearWaitTimer()
-      setErrorMsg('Lost connection to the interview server.')
+      setErrorMsg("Failed to connect to mock interview agent.")
       setStage('error')
-    }
-
-    ws.onclose = () => {
-      clearWaitTimer()
-      if (!expectedCloseRef.current) {
-        setErrorMsg('The connection to the interview server closed unexpectedly. Please try again.')
-        setStage('error')
-      }
     }
   }
 
@@ -314,15 +325,23 @@ export default function Interview({ navigate }: Props) {
       setIsRecording(false)
     }
     setLastAnswerDuration(secondsSpent)
+    
     wsRef.current.send(JSON.stringify({ event: 'answer', user_answer: answer }))
     setStage('evaluating')
-    armWaitTimer(
-      RESPONSE_TIMEOUT_MS,
-      "This is taking much longer than expected - the AI evaluator may be stuck. Please try again."
-    )
+    armWaitTimer(520000, "Evaluation calculation timed out. Retrying...")
   }
 
-  const handleNext = () => {
+  const handleEnd = () => {
+    if (isRecording) {
+      recognitionRef.current?.stop()
+      setIsRecording(false)
+    }
+    expectedCloseRef.current = true
+    wsRef.current?.send(JSON.stringify({ event: 'end' }))
+    armWaitTimer(15000, 'The interview server did not confirm the session ended. Please try again.')
+  }
+
+  const nextQuestion = () => {
     if (!feedback) return
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel()
@@ -336,15 +355,6 @@ export default function Interview({ navigate }: Props) {
     setTimeout(() => textareaRef.current?.focus(), 100)
   }
 
-  const handleEnd = () => {
-    if (isRecording) {
-      recognitionRef.current?.stop()
-      setIsRecording(false)
-    }
-    wsRef.current?.send(JSON.stringify({ event: 'end' }))
-    armWaitTimer(CONNECT_TIMEOUT_MS, 'The interview server did not confirm the session ended. Please try again.')
-  }
-
   const resetToReady = () => {
     clearWaitTimer()
     expectedCloseRef.current = true
@@ -355,282 +365,348 @@ export default function Interview({ navigate }: Props) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#FAFAF8', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+    <div className="min-h-screen bg-bg text-text transition-colors duration-300 font-sans pb-16">
       <Nav page="interview" navigate={navigate} />
-      <div style={{ maxWidth: 780, margin: '0 auto', padding: '40px clamp(16px, 4vw, 48px)' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
+
+      <div className="max-w-4xl mx-auto px-6 pt-10">
+        
+        {/* Header Banner */}
+        <div className="flex items-center justify-between gap-6 mb-8 border-b border-border/50 pb-6">
           <div>
-            <p style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#B5502E', marginBottom: 6 }}>Mock Interview</p>
-            <h1 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 24, fontWeight: 700, color: '#1C1917', margin: 0 }}>Adaptive Session</h1>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-rust">Mock Simulation</span>
+            <h1 className="font-display text-3xl font-bold tracking-tight text-text mt-0.5">Mock Interview Agent</h1>
           </div>
           {stage !== 'ready' && stage !== 'ended' && (
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 12, color: '#7A6B63' }}>Turn</div>
-              <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 24, fontWeight: 700, color: '#B5502E' }}>{turnNumber}</div>
+            <div className="bg-panel-bg px-4 py-2 rounded-xl border border-border text-center">
+              <span className="text-[9px] uppercase font-bold text-text-muted tracking-wider">Question Turn</span>
+              <span className="block font-display text-lg font-bold text-rust">{turnNumber}</span>
             </div>
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: 'rgba(181,80,46,0.07)', borderRadius: 10, marginBottom: 28, fontSize: 13, color: '#4B3D37' }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <circle cx="7" cy="7" r="6" stroke="#B5502E" strokeWidth="1.4" />
-            <path d="M7 4v3l2 1.5" stroke="#B5502E" strokeWidth="1.3" strokeLinecap="round" />
-          </svg>
-          Questions come live from the interview agent and difficulty adapts to your previous score.
-        </div>
-
-        {/* Stage: ready */}
+        {/* ── STAGE: READY ────────────────────────────────────────────────── */}
         {stage === 'ready' && (
-          <div style={{ background: '#FFFFFF', borderRadius: 20, border: '1.5px solid rgba(181,80,46,0.12)', padding: 32, textAlign: 'center' }}>
-            <div style={{ maxWidth: 280, margin: '0 auto 20px' }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B3D37', marginBottom: 6, textAlign: 'left' }}>Role to practice for</label>
-              <input
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                style={{ width: '100%', padding: '10px 14px', borderRadius: 12, border: '1.5px solid rgba(181,80,46,0.20)', fontSize: 14, boxSizing: 'border-box', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-              />
+          <div className="p-8 rounded-2xl border border-border bg-card-bg/60 glass-panel flex flex-col md:flex-row items-center gap-8">
+            <div className="flex-1">
+              <h2 className="font-display text-xl font-bold text-text">Initialize mock environment</h2>
+              <p className="text-xs text-text-muted mt-2 leading-relaxed">
+                Configure your target role. CoachLine will run agent loops designed with customizable parameters for company standards.
+              </p>
+              
+              <div className="mt-6 w-full max-w-sm">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">Role Target</label>
+                <input
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-bg/50 text-xs font-semibold text-text focus:outline-none focus:border-rust/80 transition-colors"
+                />
+              </div>
+
+              <button
+                onClick={connectAndStart}
+                className="mt-6 px-6 py-3 bg-rust hover:bg-rust/90 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-rust/15 flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>Launch Agent Session</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
-            <button
-              onClick={connectAndStart}
-              style={{ background: 'linear-gradient(135deg, #B5502E, #C97350)', border: 'none', cursor: 'pointer', color: '#FAFAF8', fontSize: 15, fontWeight: 700, padding: '14px 36px', borderRadius: 100, fontFamily: "'Plus Jakarta Sans', sans-serif", boxShadow: '0 4px 20px rgba(181,80,46,0.36)' }}
-            >
-              Begin Interview →
-            </button>
+
+            {/* Video Call Mock Avatar Frame */}
+            <div className="w-full md:w-72 aspect-video bg-terminal-bg rounded-2xl border border-border/80 flex items-center justify-center relative overflow-hidden shadow-2xl">
+              <div className="absolute inset-0 bg-gradient-to-tr from-rust/10 via-transparent to-transparent pointer-events-none" />
+              <div className="w-12 h-12 rounded-full bg-rust/20 border border-rust/40 flex items-center justify-center animate-pulse">
+                <Video className="w-5 h-5 text-rust" />
+              </div>
+              <span className="absolute bottom-3 left-3 text-[9px] font-bold text-text-muted/80 uppercase font-mono tracking-wider">
+                Coach Avatar Feed
+              </span>
+            </div>
           </div>
         )}
 
-        {stage === 'connecting' && <OrbitLoader label="Connecting to interviewer…" size={72} />}
+        {/* ── STAGE: CONNECTING ────────────────────────────────────────────── */}
+        {stage === 'connecting' && (
+          <div className="p-8 rounded-2xl border border-border bg-card-bg/60 glass-panel">
+            <OrbitLoader label="Connecting socket feed..." size={70} />
+          </div>
+        )}
 
+        {/* ── STAGE: ERROR ────────────────────────────────────────────────── */}
         {stage === 'error' && (
-          <div style={{ background: 'rgba(181,80,46,0.06)', border: '1.5px solid rgba(181,80,46,0.20)', borderRadius: 16, padding: 24, textAlign: 'center' }}>
-            <p style={{ color: '#B5502E', fontSize: 14, marginBottom: 16 }}>{errorMsg}</p>
-            <button onClick={resetToReady} style={{ background: 'none', border: '1.5px solid rgba(181,80,46,0.30)', borderRadius: 100, cursor: 'pointer', padding: '10px 20px', fontSize: 13, fontWeight: 600, color: '#B5502E' }}>
-              Try again
+          <div className="p-8 rounded-2xl border border-red-500/20 bg-red-500/5 text-center flex flex-col items-center gap-4">
+            <AlertCircle className="w-8 h-8 text-red-500" />
+            <h3 className="font-display text-base font-bold text-text">Connection Error</h3>
+            <p className="text-xs text-text-muted max-w-sm leading-relaxed">{errorMsg}</p>
+            <button
+              onClick={resetToReady}
+              className="px-4 py-2 border border-border hover:bg-border/20 text-xs font-semibold text-text rounded-lg transition-colors cursor-pointer"
+            >
+              Try Again
             </button>
           </div>
         )}
 
+        {/* ── STAGE: ANSWERING / EVALUATING ───────────────────────────────── */}
         {(stage === 'answering' || stage === 'evaluating') && (
-          <>
-            <div style={{ background: '#FFFFFF', borderRadius: 20, border: '1.5px solid rgba(181,80,46,0.12)', padding: 32, marginBottom: 20, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  {mode === 'devils_advocate' && (
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: '#FAFAF8', background: 'linear-gradient(135deg, #1C1917, #3D2419)', padding: '3px 10px', borderRadius: 100 }}>
-                      Devil's Advocate
-                    </span>
+          <div className="flex flex-col gap-6">
+            
+            {/* Split layout: Avatar & Question Details */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              
+              {/* Avatar Feeds with dynamic voice indicators */}
+              <div className="md:col-span-1 bg-terminal-bg rounded-2xl border border-border/80 p-5 flex flex-col justify-between min-h-[160px] relative overflow-hidden shadow-xl">
+                <div className="absolute inset-0 bg-gradient-to-tr from-rust/5 to-transparent pointer-events-none" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] uppercase font-bold tracking-wider text-text-muted/65 font-mono">Interviewer feed</span>
+                  <button
+                    onClick={speakQuestion}
+                    className="p-1.5 rounded-lg bg-bg/10 hover:bg-bg/25 text-rust transition-colors cursor-pointer"
+                    title={isSpeaking ? "Mute" : "Speak text"}
+                  >
+                    <Volume2 className={`w-3.5 h-3.5 ${isSpeaking ? 'animate-bounce' : ''}`} />
+                  </button>
+                </div>
+
+                {/* Speaker indicator balls */}
+                <div className="flex justify-center my-6">
+                  {isSpeaking ? (
+                    <div className="flex items-center gap-1.5 h-8">
+                      {[0.1, 0.3, 0.5, 0.2].map((delay, i) => (
+                        <div 
+                          key={i} 
+                          className="w-1.5 bg-rust rounded-full" 
+                          style={{ 
+                            height: '100%', 
+                            animation: 'speak-bar-bounce 0.6s infinite ease-in-out',
+                            animationDelay: `${delay}s` 
+                          }} 
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-rust/15 border border-rust/35 flex items-center justify-center">
+                      <div className="w-4 h-4 rounded-full bg-rust animate-pulse" />
+                    </div>
                   )}
+                </div>
+
+                <div className="flex items-center justify-between text-[9px] text-text-muted font-bold tracking-wider">
+                  <span className="uppercase">Agentic Granite</span>
                   {stage === 'answering' && (
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: '#FAFAF8', background: '#B5502E', padding: '3px 10px', borderRadius: 100, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span className="bg-rust/20 text-rust px-1.5 py-0.5 rounded-md font-mono">
                       ⏳ {formatTime(secondsSpent)}
                     </span>
                   )}
                 </div>
-                <button
-                  onClick={speakQuestion}
-                  style={{ background: 'rgba(181,80,46,0.08)', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontSize: 12, fontWeight: 600, color: '#B5502E', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-                >
-                  {isSpeaking ? (
-                    <>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
-                      Stop
-                    </>
-                  ) : (
-                    <>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
-                      Read Aloud
-                    </>
-                  )}
-                </button>
               </div>
-              <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 18, fontWeight: 400, color: '#1C1917', lineHeight: 1.65, margin: 0, fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>
-                {question}
-              </p>
+
+              {/* Question panel */}
+              <div className="md:col-span-2 p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel flex flex-col justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] uppercase font-bold tracking-wider text-rust">Active Question</span>
+                    {mode === 'devils_advocate' && (
+                      <span className="text-[8px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-terminal-bg text-accent">
+                        Devil\'s Advocate Mode
+                      </span>
+                    )}
+                  </div>
+                  <p className="font-display text-sm md:text-base text-text leading-relaxed mt-3 italic">
+                    "{question}"
+                  </p>
+                </div>
+              </div>
             </div>
 
+            {/* Answer workspace */}
             {stage === 'answering' ? (
-              <div>
-                <style>{`
-                  @keyframes voice-pulse {
-                    0% { transform: scale(1); opacity: 1; }
-                    50% { transform: scale(1.05); opacity: 0.8; }
-                    100% { transform: scale(1); opacity: 1; }
-                  }
-                `}</style>
+              <div className="flex flex-col gap-4">
                 <textarea
                   ref={textareaRef}
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
-                  placeholder="Structure your response as you would in a real interview..."
-                  style={{ width: '100%', minHeight: 200, padding: '18px 20px', borderRadius: 14, border: '1.5px solid rgba(181,80,46,0.25)', background: '#FFFFFF', fontSize: 15, color: '#1C1917', lineHeight: 1.65, fontFamily: "'Plus Jakarta Sans', sans-serif", resize: 'vertical', outline: 'none', boxSizing: 'border-box' }}
+                  placeholder="Structure your answer, highlight context examples..."
+                  className="w-full min-h-[160px] p-5 rounded-2xl border border-border bg-card-bg/60 text-xs sm:text-sm text-text leading-relaxed outline-none focus:border-rust/60 transition-colors resize-y glass-panel"
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={handleEnd} style={{ background: 'none', border: '1.5px solid rgba(181,80,46,0.25)', borderRadius: 100, cursor: 'pointer', padding: '11px 20px', fontSize: 13, fontWeight: 600, color: '#7A6B63', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                      End Session
+
+                <div className="flex justify-between items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleEnd}
+                      className="px-4 py-2 border border-border hover:bg-red-500/5 hover:text-red-500 hover:border-red-500/20 text-xs font-semibold text-text-muted rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <StopCircle className="w-3.5 h-3.5" />
+                      <span>End Interview</span>
                     </button>
                     <button
                       onClick={toggleRecording}
-                      style={{
-                        background: isRecording ? '#dc2626' : 'none',
-                        border: isRecording ? '1.5px solid #dc2626' : '1.5px solid rgba(181,80,46,0.25)',
-                        borderRadius: 100,
-                        cursor: 'pointer',
-                        padding: '11px 20px',
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: isRecording ? '#FAFAF8' : '#B5502E',
-                        fontFamily: "'Plus Jakarta Sans', sans-serif",
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        transition: 'all 0.2s ease',
-                        animation: isRecording ? 'voice-pulse 1.5s infinite ease-in-out' : 'none'
-                      }}
+                      className={`px-4 py-2 border text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+                        isRecording 
+                          ? 'bg-red-500 border-red-500 text-white animate-pulse' 
+                          : 'border-rust/45 hover:bg-rust/5 text-rust'
+                      }`}
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-                        <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v4M8 23h8"/>
-                      </svg>
-                      {isRecording ? 'Recording...' : 'Answer with Voice'}
+                      {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                      <span>{isRecording ? 'Mute' : 'Speak answer'}</span>
                     </button>
                   </div>
+
                   <button
                     onClick={handleSubmit}
                     disabled={!answer.trim()}
-                    style={{ background: answer.trim() ? 'linear-gradient(135deg, #B5502E, #C97350)' : 'rgba(181,80,46,0.25)', border: 'none', cursor: answer.trim() ? 'pointer' : 'not-allowed', color: '#FAFAF8', fontSize: 14, fontWeight: 700, padding: '12px 28px', borderRadius: 100, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                    className={`px-5 py-2.5 rounded-xl text-white text-xs font-bold transition-all cursor-pointer ${
+                      answer.trim() ? 'bg-rust hover:bg-rust/90 shadow' : 'bg-rust/40 cursor-not-allowed'
+                    }`}
                   >
-                    Submit Answer
+                    Submit response
                   </button>
                 </div>
               </div>
             ) : (
-              <div>
-                <OrbitLoader label="Evaluating your answer…" size={72} />
-                {slowWait && (
-                  <p style={{ textAlign: 'center', fontSize: 12.5, color: '#7A6B63', marginTop: -8 }}>
-                    Still working - real model evaluation can take a couple of minutes.
-                  </p>
-                )}
+              <div className="p-8 rounded-2xl border border-border bg-card-bg/60 glass-panel">
+                <OrbitLoader label="Agent scoring response..." size={64} />
               </div>
             )}
-          </>
+          </div>
         )}
 
-        {/* Stage: feedback */}
+        {/* ── STAGE: FEEDBACK ─────────────────────────────────────────────── */}
         {stage === 'feedback' && feedback && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {feedback.fallback_used && (
-              <div style={{ padding: '10px 16px', background: 'rgba(181,80,46,0.08)', borderRadius: 10, fontSize: 12.5, color: '#B5502E' }}>
-                The AI evaluator couldn't fully score this turn - showing a placeholder score.
-              </div>
-            )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 20, background: '#FFFFFF', borderRadius: 16, border: '1.5px solid rgba(181,80,46,0.12)', padding: '20px 24px' }}>
-              <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 40, fontWeight: 700, color: '#B5502E' }}>{Math.round(feedback.previous_score)}</div>
-                <div style={{ fontSize: 11, color: '#7A6B63', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Score</div>
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ height: 8, borderRadius: 4, background: 'rgba(181,80,46,0.12)', overflow: 'hidden', flex: 1, marginRight: 16 }}>
-                    <div style={{ height: '100%', width: `${feedback.previous_score}%`, borderRadius: 4, background: 'linear-gradient(90deg, #B5502E, #E0A458)', transition: 'width 1s ease' }} />
-                  </div>
-                  {lastAnswerDuration !== null && (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#B5502E', background: 'rgba(181,80,46,0.08)', padding: '2px 8px', borderRadius: 100, flexShrink: 0 }}>
-                      ⏱️ {formatTime(lastAnswerDuration)}
+          <div className="flex flex-col gap-6">
+            
+            {/* Feedback Core Score card */}
+            <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-rust">Turn Feedback</span>
+                  {feedback.fallback_used && (
+                    <span className="text-[8px] uppercase tracking-wider text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full font-bold">
+                      Calculated rating
                     </span>
                   )}
                 </div>
-                <p style={{ fontSize: 13, color: '#7A6B63', margin: '8px 0 0', lineHeight: 1.5 }}>{feedback.feedback}</p>
+                <p className="text-xs sm:text-sm text-text leading-relaxed">
+                  {feedback.feedback}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4 flex-shrink-0">
+                {lastAnswerDuration !== null && (
+                  <div className="bg-panel-bg border border-border px-3 py-1.5 rounded-xl text-center">
+                    <span className="text-[9px] uppercase font-semibold text-text-muted">Duration</span>
+                    <span className="block font-mono text-xs font-bold text-text mt-0.5">{formatTime(lastAnswerDuration)}</span>
+                  </div>
+                )}
+                <div className="bg-rust/15 border border-rust/35 w-20 h-20 rounded-full flex flex-col items-center justify-center">
+                  <span className="font-display text-2xl font-bold text-rust">{Math.round(feedback.previous_score)}</span>
+                  <span className="text-[8px] uppercase tracking-wider font-bold text-rust/80">Score</span>
+                </div>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
-              {Object.entries(feedback.scores_breakdown).map(([k, v]) => (
-                <div key={k} style={{ background: '#FFFFFF', borderRadius: 12, border: '1.5px solid rgba(181,80,46,0.10)', padding: '10px 8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#B5502E', fontFamily: "'Fraunces', Georgia, serif" }}>{Math.round(v)}</div>
-                  <div style={{ fontSize: 9, color: '#7A6B63', textTransform: 'capitalize' }}>{k.replace('_method', '')}</div>
+            {/* Score Breakdowns Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              {Object.entries(feedback.scores_breakdown).map(([key, score]) => (
+                <div key={key} className="p-4 rounded-xl border border-border bg-card-bg/60 glass-panel text-center">
+                  <span className="text-[9px] uppercase font-bold text-text-muted tracking-wider block mb-1">
+                    {key.replace('_', ' ')}
+                  </span>
+                  <span className="font-display text-base font-bold text-rust">{Math.round(score)}%</span>
                 </div>
               ))}
             </div>
 
-            {feedback.weak_topics.length > 0 && (
-              <div style={{ background: 'rgba(181,80,46,0.05)', borderRadius: 14, border: '1.5px solid rgba(181,80,46,0.15)', padding: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: '#B5502E', marginBottom: 12 }}>Gaps → Notes Generating</div>
-                {feedback.weak_topics.map((g) => (
-                  <div key={g} style={{ display: 'flex', gap: 8, marginBottom: 8, fontSize: 13, color: '#1C1917' }}>
-                    <span style={{ color: '#B5502E', flexShrink: 0 }}>→</span>
-                    {g}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button onClick={handleEnd} style={{ background: 'none', border: '1.5px solid rgba(181,80,46,0.20)', borderRadius: 100, cursor: 'pointer', padding: '11px 22px', fontSize: 13, fontWeight: 600, color: '#7A6B63', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                End Session
+            {/* Actions for next step */}
+            <div className="flex items-center justify-between border-t border-border pt-6 mt-4">
+              <button
+                onClick={handleEnd}
+                className="px-4 py-2 border border-border hover:bg-red-500/5 hover:text-red-500 hover:border-red-500/20 text-xs font-semibold text-text-muted rounded-xl transition-all cursor-pointer"
+              >
+                End loop session
               </button>
-              <button onClick={() => navigate('notes')} style={{ background: 'none', border: '1.5px solid rgba(181,80,46,0.30)', borderRadius: 100, cursor: 'pointer', padding: '11px 22px', fontSize: 13, fontWeight: 600, color: '#B5502E', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                View Generated Notes
-              </button>
-              <button onClick={handleNext} style={{ background: 'linear-gradient(135deg, #B5502E, #C97350)', border: 'none', cursor: 'pointer', color: '#FAFAF8', fontSize: 13, fontWeight: 700, padding: '11px 22px', borderRadius: 100, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                Next Question →
+              <button
+                onClick={nextQuestion}
+                className="px-5 py-2.5 bg-rust hover:bg-rust/90 text-white rounded-xl text-xs font-bold transition-all shadow flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>Request next question</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
         )}
 
-        {/* Stage: ended */}
+        {/* ── STAGE: ENDED ────────────────────────────────────────────────── */}
         {stage === 'ended' && ended && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ background: 'linear-gradient(160deg, #1C1917, #2E1F18)', borderRadius: 20, padding: 32, textAlign: 'center' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: '#E0A458', marginBottom: 12 }}>Session Complete</div>
-              <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 48, fontWeight: 700, color: '#FAFAF8' }}>{Math.round(ended.average_score)}</div>
-              <div style={{ fontSize: 12, color: 'rgba(250,250,248,0.6)' }}>Average score across the session</div>
+          <div className="flex flex-col gap-6">
+            
+            {/* Session Summary Card */}
+            <div className="p-8 rounded-2xl border border-border bg-card-bg/60 glass-panel text-center flex flex-col items-center gap-3">
+              <CheckCircle className="w-10 h-10 text-green-500" />
+              <h2 className="font-display text-xl font-bold text-text">Session completed successfully</h2>
+              <p className="text-xs text-text-muted max-w-sm leading-relaxed mt-1">
+                Your performance scores have been mapped to target topics. Weak domain cards have been initialized inside the Galaxy constellation.
+              </p>
+              {unlockedNextWeek && (
+                <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-500 text-xs font-semibold mt-3">
+                  🎉 Achievement: Next study milestone unlocked!
+                </div>
+              )}
             </div>
 
-            {unlockedNextWeek && (
-              <div style={{
-                background: 'rgba(21,128,61,0.08)',
-                border: '1.5px solid #15803D',
-                borderRadius: 16,
-                padding: '16px 20px',
-                textAlign: 'center',
-                color: '#15803D',
-                fontSize: 13,
-                fontWeight: 600,
-                lineHeight: 1.5,
-                boxShadow: '0 4px 12px rgba(21,128,61,0.05)',
-                fontFamily: "'Plus Jakarta Sans', sans-serif"
-              }}>
-                🎉 Congratulations! You scored {Math.round(ended.average_score)}% and successfully unlocked Week {practiceWeek ? practiceWeek + 1 : 2} of your roadmap!
-              </div>
-            )}
-            
-            {practiceWeek !== null && !unlockedNextWeek && ended.average_score < 50 && (
-              <div style={{
-                background: 'rgba(181,80,46,0.08)',
-                border: '1.5px solid #B5502E',
-                borderRadius: 16,
-                padding: '16px 20px',
-                textAlign: 'center',
-                color: '#B5502E',
-                fontSize: 13,
-                fontWeight: 600,
-                lineHeight: 1.5,
-                fontFamily: "'Plus Jakarta Sans', sans-serif"
-              }}>
-                💡 Tip: You scored {Math.round(ended.average_score)}%. Try to score 50% or higher to unlock the next week's practice session!
-              </div>
-            )}
+            {/* Performance breakdowns */}
+            <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel">
+              <h3 className="font-display text-base font-bold text-text mb-6 text-center">Cumulative Competency</h3>
+              
+              <div className="flex flex-col sm:flex-row items-center justify-around gap-8">
+                {/* Total Avg Score ring */}
+                <div className="relative flex items-center justify-center w-32 h-32 flex-shrink-0">
+                  <svg className="w-full h-full transform -rotate-90">
+                    <circle cx="64" cy="64" r="54" stroke="var(--border)" strokeWidth="6" fill="transparent" />
+                    <circle 
+                      cx="64" 
+                      cy="64" 
+                      r="54" 
+                      stroke="var(--rust)" 
+                      strokeWidth="6" 
+                      fill="transparent" 
+                      strokeDasharray="339"
+                      strokeDashoffset={339 - (339 * ended.average_score) / 100}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute text-center">
+                    <span className="font-display text-3xl font-bold text-rust">{Math.round(ended.average_score)}%</span>
+                    <span className="block text-[8px] uppercase tracking-wider font-semibold text-text-muted mt-0.5">Average</span>
+                  </div>
+                </div>
 
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-              <button onClick={() => navigate('mastery')} style={{ background: 'none', border: '1.5px solid rgba(181,80,46,0.30)', borderRadius: 100, cursor: 'pointer', padding: '11px 22px', fontSize: 13, fontWeight: 600, color: '#B5502E', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                View Mastery Map
-              </button>
-              <button onClick={() => { setStage('ready'); setEnded(null) }} style={{ background: 'linear-gradient(135deg, #B5502E, #C97350)', border: 'none', cursor: 'pointer', color: '#FAFAF8', fontSize: 13, fontWeight: 700, padding: '11px 22px', borderRadius: 100, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                Start Another Session
+                {/* Breakdown metrics list */}
+                <div className="flex-1 flex flex-col gap-4 w-full">
+                  {Object.entries(ended.scores_breakdown).map(([key, score]) => (
+                    <div key={key}>
+                      <div className="flex justify-between text-xs font-semibold text-text-muted mb-1.5 capitalize">
+                        <span>{key.replace('_', ' ')}</span>
+                        <span>{Math.round(score)}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-border/40 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-rust" 
+                          style={{ width: `${score}%` }} 
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Return action bar */}
+            <div className="flex justify-center mt-6">
+              <button
+                onClick={resetToReady}
+                className="px-6 py-3 bg-rust hover:bg-rust/90 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-rust/10 cursor-pointer"
+              >
+                Return to Interview Home
               </button>
             </div>
           </div>

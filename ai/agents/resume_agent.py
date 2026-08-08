@@ -68,7 +68,7 @@ Given the candidate's resume below and a list of improvements needed:
 Improvements to address:
 {chr(10).join(['- ' + imp for imp in improvements])}
 
-Rewrite the resume text to address these improvements. For example, quantify results with metrics (e.g. percentages or counts), use active technical verbs, and highlight specific frameworks/clouds clearly. Maintain a professional structure.
+Rewrite the resume text to address these improvements. For example, quantify results with metrics (e.g. percentages or counts), use active technical verbs, and highlight specific frameworks/clouds clearly. Crucially, you MUST maintain the exact same formatting, section headers, spacing, indentation, line breaks, and overall layout structure of the original resume. Only optimize the specific bullet points that need improvements; do not restructure or delete other parts of the document.
 
 Then, list the key changes you made.
 

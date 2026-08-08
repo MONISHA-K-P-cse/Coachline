@@ -1,74 +1,112 @@
+import { motion } from 'framer-motion'
+
 interface OrbitLoaderProps {
   label?: string
   size?: number
 }
 
-export function OrbitLoader({ label = 'Thinking…', size = 80 }: OrbitLoaderProps) {
-  const s = size
-  const ringStyle = (inset: number, delay: string, dur: string) => ({
-    position: 'absolute' as const,
-    inset,
-    borderRadius: '50%',
-    border: `1.5px solid`,
-    borderColor: 'rgba(181, 80, 46, 0.35)',
-    animation: `orbitPulse ${dur} ease-in-out ${delay} infinite`,
-  })
+export function OrbitLoader({ label = 'Thinking…', size = 100 }: OrbitLoaderProps) {
+  const containerSize = size + 40
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column' as const,
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 16,
-        padding: '48px 24px',
-      }}
-    >
-      {/* Orbit ring area — reserved for Framer Motion orbit animation */}
-      <div
-        style={{
-          position: 'relative',
-          width: s,
-          height: s,
-          flexShrink: 0,
-        }}
-        aria-label="Loading"
+    <div className="flex flex-col items-center justify-center py-16 px-6 gap-6">
+      {/* 3D Orbit Space */}
+      <div 
+        className="relative flex items-center justify-center"
+        style={{ width: containerSize, height: containerSize }}
       >
-        <div style={ringStyle(0, '0s', '2.8s')} />
-        <div style={ringStyle(s * 0.12, '0.4s', '2.4s')} />
-        <div style={ringStyle(s * 0.25, '0.8s', '2.0s')} />
-        <div
-          style={{
-            position: 'absolute',
-            inset: s * 0.38,
-            borderRadius: '50%',
-            backgroundColor: 'rgba(224, 164, 88, 0.18)',
+        {/* Ambient background glow */}
+        <div className="absolute inset-4 rounded-full bg-rust/5 blur-xl animate-pulse" />
+
+        {/* Orbit Path 1 (Inner) */}
+        <div 
+          className="absolute rounded-full border border-border/40"
+          style={{ width: size * 0.5, height: size * 0.5 }}
+        />
+        
+        {/* Orbit Path 2 (Mid) */}
+        <div 
+          className="absolute rounded-full border border-border/30"
+          style={{ width: size * 0.8, height: size * 0.8 }}
+        />
+
+        {/* Orbit Path 3 (Outer) */}
+        <div 
+          className="absolute rounded-full border border-border/20"
+          style={{ width: size, height: size }}
+        />
+
+        {/* Glowing Sun Core */}
+        <motion.div 
+          className="absolute rounded-full bg-gradient-to-tr from-rust to-accent shadow-lg shadow-rust/40 z-10"
+          style={{ width: size * 0.28, height: size * 0.28 }}
+          animate={{
+            scale: [1, 1.15, 1],
+            boxShadow: [
+              '0px 4px 12px rgba(217, 119, 6, 0.4)',
+              '0px 4px 24px rgba(217, 119, 6, 0.6)',
+              '0px 4px 12px rgba(217, 119, 6, 0.4)'
+            ]
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: "easeInOut"
           }}
         />
-        <div
-          style={{
-            position: 'absolute',
-            inset: s * 0.44,
-            borderRadius: '50%',
-            backgroundColor: 'rgba(181, 80, 46, 0.22)',
-            animation: 'orbitPulse 1.8s ease-in-out 0.2s infinite',
+
+        {/* Orbiting Planet 1 (Inner) */}
+        <motion.div
+          className="absolute w-2 h-2 rounded-full bg-rust"
+          animate={{ rotate: 360 }}
+          style={{ originX: 0.5, originY: 0.5, left: containerSize / 2 - 4 }}
+          transition={{
+            duration: 1.8,
+            repeat: Infinity,
+            ease: "linear"
           }}
-        />
+        >
+          <div style={{ transform: `translateY(-${size * 0.25}px)` }} className="w-2.5 h-2.5 rounded-full bg-rust shadow-sm" />
+        </motion.div>
+
+        {/* Orbiting Planet 2 (Mid) */}
+        <motion.div
+          className="absolute w-2.5 h-2.5 rounded-full bg-accent"
+          animate={{ rotate: -360 }}
+          style={{ originX: 0.5, originY: 0.5, left: containerSize / 2 - 5 }}
+          transition={{
+            duration: 3,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+        >
+          <div style={{ transform: `translateY(${size * 0.4}px)` }} className="w-3 h-3 rounded-full bg-accent shadow-sm" />
+        </motion.div>
+
+        {/* Orbiting Planet 3 (Outer) */}
+        <motion.div
+          className="absolute w-2 h-2 rounded-full bg-text-muted"
+          animate={{ rotate: 360 }}
+          style={{ originX: 0.5, originY: 0.5, left: containerSize / 2 - 4 }}
+          transition={{
+            duration: 4.5,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+        >
+          <div style={{ transform: `translateY(-${size * 0.5}px)` }} className="w-2 h-2 rounded-full bg-text-muted opacity-80" />
+        </motion.div>
       </div>
 
-      <span
-        style={{
-          fontSize: 13,
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase' as const,
-          color: '#7A6B63',
-          fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-          fontWeight: 500,
-        }}
-      >
-        {label}
-      </span>
+      {/* Loading Label */}
+      <div className="flex flex-col items-center gap-1">
+        <span className="text-xs font-bold uppercase tracking-wider text-text-muted">
+          {label}
+        </span>
+        <span className="text-[10px] text-text-muted/60 font-medium">
+          Securing agent context...
+        </span>
+      </div>
     </div>
   )
 }

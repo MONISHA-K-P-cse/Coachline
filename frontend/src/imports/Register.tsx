@@ -1,38 +1,10 @@
 import { useState } from 'react'
 import { Nav } from '../components/Nav'
 import { useAuth } from '../lib/AuthContext'
+import { KeyRound, Mail, User, Sparkles } from 'lucide-react'
 
 type Page = 'landing' | 'login' | 'register' | 'onboarding' | 'workspace' | 'roadmap' | 'interview' | 'notes' | 'mastery' | 'mentor'
 interface Props { navigate: (p: Page) => void }
-
-const cardStyle: React.CSSProperties = {
-  background: '#FFFFFF',
-  borderRadius: 20,
-  border: '1.5px solid rgba(181,80,46,0.12)',
-  padding: 36,
-  boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '12px 14px',
-  borderRadius: 12,
-  border: '1.5px solid rgba(181,80,46,0.20)',
-  background: '#FFFFFF',
-  fontSize: 14,
-  color: '#1C1917',
-  fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-  outline: 'none',
-  boxSizing: 'border-box',
-}
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 12,
-  fontWeight: 600,
-  color: '#4B3D37',
-  marginBottom: 6,
-}
 
 export default function Register({ navigate }: Props) {
   const { register, error } = useAuth()
@@ -57,89 +29,122 @@ export default function Register({ navigate }: Props) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#FAFAF8', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+    <div className="min-h-screen bg-bg text-text transition-colors duration-300 font-sans flex flex-col">
       <Nav page="landing" navigate={navigate} />
-      <div style={{ maxWidth: 420, margin: '0 auto', padding: '64px clamp(16px, 4vw, 48px)' }}>
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <h1 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 28, fontWeight: 700, color: '#1C1917', margin: '0 0 8px' }}>
-            Start your journey.
-          </h1>
-          <p style={{ fontSize: 14, color: '#7A6B63', margin: 0 }}>Two minutes, then Coachline does the rest.</p>
-        </div>
-
-        <form onSubmit={handleSubmit} style={cardStyle}>
-          <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle} htmlFor="full_name">Full name</label>
-            <input
-              id="full_name"
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              style={inputStyle}
-              placeholder="Alex Rivera"
-            />
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle} htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={inputStyle}
-              placeholder="you@example.com"
-            />
-          </div>
-          <div style={{ marginBottom: 22 }}>
-            <label style={labelStyle} htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={inputStyle}
-              placeholder="At least 8 characters"
-            />
+      
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+        <div className="w-full max-w-[420px]">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="font-display text-3xl font-bold tracking-tight text-text">
+              Create your account
+            </h1>
+            <p className="text-xs text-text-muted mt-2">
+              Start optimizing your engineering preparation today.
+            </p>
           </div>
 
-          {(localError || error) && (
-            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(181,80,46,0.08)', color: '#B5502E', fontSize: 13 }}>
-              {localError || error}
+          {/* Form Card */}
+          <form 
+            onSubmit={handleSubmit} 
+            className="p-8 rounded-2xl border border-border bg-card-bg/85 backdrop-blur-md shadow-xl flex flex-col gap-5 glass-panel"
+          >
+            {/* Full Name field */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted" htmlFor="full_name">
+                Full Name
+              </label>
+              <div className="relative flex items-center">
+                <User className="w-4 h-4 text-text-muted/60 absolute left-3.5" />
+                <input
+                  id="full_name"
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-bg/50 text-sm focus:outline-none focus:border-rust/60 transition-colors"
+                  placeholder="Alex Rivera"
+                />
+              </div>
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{
-              width: '100%',
-              background: submitting ? 'rgba(181,80,46,0.4)' : 'linear-gradient(135deg, #B5502E 0%, #C97350 100%)',
-              border: 'none',
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              color: '#FAFAF8',
-              fontSize: 14,
-              fontWeight: 700,
-              padding: '13px 0',
-              borderRadius: 100,
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
-            }}
-          >
-            {submitting ? 'Creating account…' : 'Create account'}
-          </button>
-        </form>
+            {/* Email field */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted" htmlFor="email">
+                Email Address
+              </label>
+              <div className="relative flex items-center">
+                <Mail className="w-4 h-4 text-text-muted/60 absolute left-3.5" />
+                <input
+                  id="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-bg/50 text-sm focus:outline-none focus:border-rust/60 transition-colors"
+                  placeholder="name@example.com"
+                />
+              </div>
+            </div>
 
-        <p style={{ textAlign: 'center', fontSize: 13, color: '#7A6B63', marginTop: 20 }}>
-          Already have an account?{' '}
-          <button
-            onClick={() => navigate('login')}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#B5502E', fontWeight: 700, fontSize: 13, padding: 0 }}
-          >
-            Sign in
-          </button>
-        </p>
+            {/* Password field */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted" htmlFor="password">
+                Password
+              </label>
+              <div className="relative flex items-center">
+                <KeyRound className="w-4 h-4 text-text-muted/60 absolute left-3.5" />
+                <input
+                  id="password"
+                  type="password"
+                  required
+                  minLength={8}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-bg/50 text-sm focus:outline-none focus:border-rust/60 transition-colors"
+                  placeholder="At least 8 characters"
+                />
+              </div>
+            </div>
+
+            {/* Error alerts */}
+            {(localError || error) && (
+              <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-semibold leading-relaxed">
+                {localError || error}
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={submitting}
+              className={`w-full py-3 rounded-xl text-white font-semibold text-sm transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer ${
+                submitting 
+                  ? 'bg-rust/60 cursor-not-allowed' 
+                  : 'bg-rust hover:bg-rust/90 shadow-md shadow-rust/15 hover:shadow-lg'
+              }`}
+            >
+              {submitting ? (
+                <>
+                  <Sparkles className="w-4 h-4 animate-spin" />
+                  <span>Creating account...</span>
+                </>
+              ) : (
+                <span>Create account</span>
+              )}
+            </button>
+          </form>
+
+          {/* Sign in footer link */}
+          <p className="text-center text-xs text-text-muted mt-6">
+            Already have an account?{' '}
+            <button
+              onClick={() => navigate('login')}
+              className="text-rust font-semibold hover:underline cursor-pointer bg-transparent border-none p-0"
+            >
+              Sign in
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   )
