@@ -78,6 +78,10 @@ class GraniteClient:
                 challenge_id = "concurrency_race"
             elif "cors" in prompt_lower or "security" in prompt_lower:
                 challenge_id = "cors_security"
+            elif "xss" in prompt_lower or "scripting" in prompt_lower:
+                challenge_id = "xss_scripting"
+            elif "traversal" in prompt_lower or "path" in prompt_lower:
+                challenge_id = "path_traversal"
 
             candidate_code = ""
             if "candidate code:" in prompt_lower:
@@ -147,6 +151,62 @@ class GraniteClient:
                         }],
                         "refactored_code": "const allowedOrigins = ['https://trusted.coachline.app'];\napp.use((req, res, next) => {\n    const origin = req.headers.origin;\n    if (allowedOrigins.includes(origin)) {\n        res.setHeader('Access-Control-Allow-Origin', origin);\n    }\n    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');\n    next();\n});",
                         "score": 30
+                    })
+            elif challenge_id == "xss_scripting":
+                has_sanitize = "escape" in candidate_code.lower() or "sanitize" in candidate_code.lower() or "replace" in candidate_code.lower()
+                if has_sanitize:
+                    return json.dumps({
+                        "plan": [
+                            "Analyze HTML dynamic tag rendering.",
+                            "Verify user-supplied inputs are escaped before rendering in div."
+                        ],
+                        "vulnerabilities": [],
+                        "refactored_code": candidate_code,
+                        "score": 100
+                    })
+                else:
+                    return json.dumps({
+                        "plan": [
+                            "Analyze Express response rendering calls.",
+                            "Identify unescaped HTML content insertion vectors.",
+                            "Implement safe escaping middleware or utility libraries."
+                        ],
+                        "vulnerabilities": [{
+                            "severity": "High",
+                            "line": 2,
+                            "issue": "Unsanitized dynamic input outputted directly to HTML response allows Cross-Site Scripting (XSS).",
+                            "fix": "Escape HTML tags or use sanitization helpers before outputting."
+                        }],
+                        "refactored_code": "const escapeHTML = (str) => str.replace(/[&<>'\"/]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', \"'\": '&#39;', '\"': '&quot;', '/': '&#x2F;' }[tag] || tag));\nconst userComment = req.query.comment;\nres.send(`<div>${escapeHTML(userComment)}</div>`);",
+                        "score": 35
+                    })
+            elif challenge_id == "path_traversal":
+                has_path_check = "basename" in candidate_code.lower() or "abspath" in candidate_code.lower() or "path.join" in candidate_code.lower()
+                if has_path_check:
+                    return json.dumps({
+                        "plan": [
+                            "Analyze file paths access operations.",
+                            "Verify filename parameter is sanitized using os.path.basename."
+                        ],
+                        "vulnerabilities": [],
+                        "refactored_code": candidate_code,
+                        "score": 100
+                    })
+                else:
+                    return json.dumps({
+                        "plan": [
+                            "Identify path resolution methods.",
+                            "Analyze lack of bounds safety checking in dynamic file path concatenation.",
+                            "Structure sanitization using os.path.basename to strip path traversal sequences."
+                        ],
+                        "vulnerabilities": [{
+                            "severity": "High",
+                            "line": 2,
+                            "issue": "Dynamic filepath joining without path validation allows directory traversal (../../etc/passwd).",
+                            "fix": "Verify filepath bounds using os.path.basename or validate path directories."
+                        }],
+                        "refactored_code": "import os\n\ndef read_user_file(filename):\n    safe_filename = os.path.basename(filename)\n    filepath = os.path.join(\"/var/www/uploads\", safe_filename)\n    with open(filepath, \"r\") as f:\n        return f.read()",
+                        "score": 40
                     })
             else:
                 # SQL Injection

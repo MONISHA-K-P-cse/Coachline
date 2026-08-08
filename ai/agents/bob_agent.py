@@ -24,10 +24,20 @@ Respond with STRICT JSON containing:
 """
         response = self.client.generate(prompt)
         import json
+        import re
         try:
-            return json.loads(response)
+            text = response.strip()
+            # Try to match markdown json blocks
+            match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+            if match:
+                text = match.group(1)
+            else:
+                # Try to extract the first occurrence of {...}
+                match_brace = re.search(r"(\{.*\})", text, re.DOTALL)
+                if match_brace:
+                    text = match_brace.group(1)
+            return json.loads(text)
         except Exception:
-            # Fallback to defaults
             return {
                 "plan": ["Analyze codebase structures."],
                 "vulnerabilities": [{"severity": "Low", "line": 1, "issue": "Syntax check", "fix": "N/A"}],

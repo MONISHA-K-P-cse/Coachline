@@ -131,6 +131,10 @@ export default function Workspace({ navigate }: Props) {
       setBobCode('counter = 0\ndef increment_counter():\n    global counter\n    current = counter\n    time.sleep(0.01)\n    counter = current + 1')
     } else if (bobChallengeId === 'cors_security') {
       setBobCode('app.use((req, res, next) => {\n    res.setHeader(\'Access-Control-Allow-Origin\', \'*\');\n    res.setHeader(\'Access-Control-Allow-Methods\', \'GET, POST\');\n    next();\n});')
+    } else if (bobChallengeId === 'xss_scripting') {
+      setBobCode('const userComment = req.query.comment;\nres.send(`<div>${userComment}</div>`);')
+    } else if (bobChallengeId === 'path_traversal') {
+      setBobCode('def read_user_file(filename):\n    filepath = f"/var/www/uploads/{filename}"\n    with open(filepath, "r") as f:\n        return f.read()')
     }
   }, [bobChallengeId])
 
@@ -520,6 +524,8 @@ export default function Workspace({ navigate }: Props) {
                     <option value="sql_injection">SQL Injection Challenge</option>
                     <option value="concurrency_race">Race Condition Challenge</option>
                     <option value="cors_security">CORS Wildcard Challenge</option>
+                    <option value="xss_scripting">XSS Scripting Challenge</option>
+                    <option value="path_traversal">Path Traversal Challenge</option>
                   </select>
                 </div>
               </div>
