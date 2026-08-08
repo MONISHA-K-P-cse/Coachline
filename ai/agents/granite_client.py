@@ -72,62 +72,112 @@ class GraniteClient:
         prompt_lower = prompt.lower()
 
         # 1.1 IBM Bob Agent
-        if "ibm bob code auditor" in prompt_lower or "bob_audit" in prompt_lower:
+        if "ibm bob" in prompt_lower or "bob_audit" in prompt_lower:
             challenge_id = "sql_injection"
-            for line in prompt.splitlines():
-                if "challenge id" in line.lower() or "challenge_id" in line.lower():
-                    challenge_id = line.split(":", 1)[1].strip()
-                    break
-            
+            if "concurrency" in prompt_lower or "threading" in prompt_lower:
+                challenge_id = "concurrency_race"
+            elif "cors" in prompt_lower or "security" in prompt_lower:
+                challenge_id = "cors_security"
+
+            candidate_code = ""
+            if "candidate code:" in prompt_lower:
+                parts = prompt.split("Candidate Code:", 1)
+                if len(parts) > 1:
+                    code_part = parts[1]
+                    if "respond with" in code_part.lower():
+                        candidate_code = code_part.split("Respond with", 1)[0].strip()
+                    else:
+                        candidate_code = code_part.strip()
+
             import json
-            if "threading" in challenge_id or "concurrency" in challenge_id:
-                return json.dumps({
-                    "plan": [
-                        "Trace global counter reference access path.",
-                        "Detect lack of thread synchronization locks during context-switched operations.",
-                        "Formulate lock synchronization strategy to ensure atomic execution."
-                    ],
-                    "vulnerabilities": [{
-                        "severity": "Medium",
-                        "line": 4,
-                        "issue": "Race condition due to shared global state accessed without synchronization locks.",
-                        "fix": "Implement threading.Lock context manager."
-                    }],
-                    "refactored_code": "import threading\n\ncounter = 0\ncounter_lock = threading.Lock()\n\ndef increment_counter():\n    global counter\n    with counter_lock:\n        counter += 1",
-                    "score": 75
-                })
-            elif "cors" in challenge_id or "security" in challenge_id:
-                return json.dumps({
-                    "plan": [
-                        "Analyze Express middleware configuration settings.",
-                        "Identify wildcard CORS policy headers.",
-                        "Structure restricted whitelist configuration values."
-                    ],
-                    "vulnerabilities": [{
-                        "severity": "High",
-                        "line": 2,
-                        "issue": "Wildcard origin ('*') allows any site to make cross-origin calls, exposing sensitive APIs.",
-                        "fix": "Define an explicit list of trusted origin domains."
-                    }],
-                    "refactored_code": "const allowedOrigins = ['https://trusted.coachline.app'];\napp.use((req, res, next) => {\n    const origin = req.headers.origin;\n    if (allowedOrigins.includes(origin)) {\n        res.setHeader('Access-Control-Allow-Origin', origin);\n    }\n    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');\n    next();\n});",
-                    "score": 85
-                })
+            
+            if challenge_id == "concurrency_race":
+                has_lock = ("lock" in candidate_code.lower() and "threading" in candidate_code.lower()) or "acquire" in candidate_code.lower()
+                if has_lock:
+                    return json.dumps({
+                        "plan": [
+                            "Trace global counter reference access path.",
+                            "Verify threading synchronization lock patterns.",
+                            "Verify atomic increments are thread-safe."
+                        ],
+                        "vulnerabilities": [],
+                        "refactored_code": candidate_code,
+                        "score": 100
+                    })
+                else:
+                    return json.dumps({
+                        "plan": [
+                            "Trace global counter reference access path.",
+                            "Detect lack of thread synchronization locks during context-switched operations.",
+                            "Formulate lock synchronization strategy to ensure atomic execution."
+                        ],
+                        "vulnerabilities": [{
+                            "severity": "Medium",
+                            "line": 4,
+                            "issue": "Race condition due to shared global state accessed without synchronization locks.",
+                            "fix": "Implement threading.Lock context manager."
+                        }],
+                        "refactored_code": "import threading\n\ncounter = 0\ncounter_lock = threading.Lock()\n\ndef increment_counter():\n    global counter\n    with counter_lock:\n        counter += 1",
+                        "score": 50
+                    })
+            elif challenge_id == "cors_security":
+                has_restricted_cors = "origin" in candidate_code.lower() and "*" not in candidate_code
+                if has_restricted_cors:
+                    return json.dumps({
+                        "plan": [
+                            "Analyze Express middleware configuration settings.",
+                            "Verify restricted origin values match security headers."
+                        ],
+                        "vulnerabilities": [],
+                        "refactored_code": candidate_code,
+                        "score": 100
+                    })
+                else:
+                    return json.dumps({
+                        "plan": [
+                            "Analyze Express middleware configuration settings.",
+                            "Identify wildcard CORS policy headers.",
+                            "Structure restricted whitelist configuration values."
+                        ],
+                        "vulnerabilities": [{
+                            "severity": "High",
+                            "line": 2,
+                            "issue": "Wildcard origin ('*') allows any site to make cross-origin calls, exposing sensitive APIs.",
+                            "fix": "Define an explicit list of trusted origin domains."
+                        }],
+                        "refactored_code": "const allowedOrigins = ['https://trusted.coachline.app'];\napp.use((req, res, next) => {\n    const origin = req.headers.origin;\n    if (allowedOrigins.includes(origin)) {\n        res.setHeader('Access-Control-Allow-Origin', origin);\n    }\n    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');\n    next();\n});",
+                        "score": 30
+                    })
             else:
-                return json.dumps({
-                    "plan": [
-                        "Analyze syntax tree of target database handler.",
-                        "Identify dynamic SQL string formatting pattern.",
-                        "Formulate plan to replace raw format interpolations with prepared statement parameters."
-                    ],
-                    "vulnerabilities": [{
-                        "severity": "High",
-                        "line": 2,
-                        "issue": "Direct string interpolation into database query allows SQL Injection.",
-                        "fix": "Use parameterized bind variables instead of f-strings."
-                    }],
-                    "refactored_code": "def get_user_data(username):\n    query = \"SELECT * FROM users WHERE username = :username\"\n    return db.execute(query, {\"username\": username})",
-                    "score": 90
-                })
+                # SQL Injection
+                has_bind = ":" in candidate_code or "?" in candidate_code or "%s" in candidate_code or "execute(query, {" in candidate_code.lower() or "execute(query, (" in candidate_code.lower()
+                no_fstring = "f\"" not in candidate_code.lower() and "f'" not in candidate_code.lower()
+                if has_bind and no_fstring:
+                    return json.dumps({
+                        "plan": [
+                            "Analyze syntax tree of target database handler.",
+                            "Verify query binding and bind parameters are structured correctly."
+                        ],
+                        "vulnerabilities": [],
+                        "refactored_code": candidate_code,
+                        "score": 100
+                    })
+                else:
+                    return json.dumps({
+                        "plan": [
+                            "Analyze syntax tree of database handler.",
+                            "Identify dynamic SQL string formatting pattern.",
+                            "Formulate plan to replace raw format interpolations with prepared statement parameters."
+                        ],
+                        "vulnerabilities": [{
+                            "severity": "High",
+                            "line": 2,
+                            "issue": "Direct string interpolation into database query allows SQL Injection.",
+                            "fix": "Use parameterized bind variables instead of f-strings."
+                        }],
+                        "refactored_code": "def get_user_data(username):\n    query = \"SELECT * FROM users WHERE username = :username\"\n    return db.execute(query, {\"username\": username})",
+                        "score": 40
+                    })
 
         # 1. Mentor Agent
         if "career mentor" in prompt_lower or "candidate preparing for" in prompt_lower:
