@@ -7,7 +7,7 @@ import Editor from '@monaco-editor/react'
 import { 
   FileText, Shield, Sparkles, Award, Zap, Activity,
   Briefcase, TrendingUp, AlertTriangle, CheckCircle, 
-  ArrowRight, Download, Copy, Play, Upload, Code2
+  ArrowRight, Download, Copy, Play, Upload, Code2, RefreshCw
 } from 'lucide-react'
 
 type Page = 'landing' | 'login' | 'register' | 'onboarding' | 'workspace' | 'roadmap' | 'interview' | 'notes' | 'mastery' | 'mentor'
