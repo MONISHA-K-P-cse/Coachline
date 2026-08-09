@@ -94,9 +94,17 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                 experience_level = profile.experience_level if profile and profile.experience_level else ""
                 candidate_background = _candidate_background(db, user_id)
 
+                start_diff = "Easy"
+                if week == 2:
+                    start_diff = "Medium"
+                elif week == 3:
+                    start_diff = "Hard"
+                elif week >= 4:
+                    start_diff = "Expert"
+
                 metadata = {
-                    "current_difficulty": "Easy",
-                    "difficulty_reached": "Easy",
+                    "current_difficulty": start_diff,
+                    "difficulty_reached": start_diff,
                     "weak_topics": [],
                     "strong_topics": [],
                     "questions_asked": [],

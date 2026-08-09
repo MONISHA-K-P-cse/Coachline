@@ -156,6 +156,51 @@ def get_syllabus_questions(role: str, week: int) -> list:
         return syllabus_default[w - 1]
 
 
+def classify_topic(topic_str: str, role: str) -> str:
+    if not topic_str:
+        r_lower = role.lower()
+        if "data" in r_lower or "ml" in r_lower or "machine learning" in r_lower or "scientist" in r_lower:
+            return "ML"
+        elif "backend" in r_lower:
+            return "DBMS"
+        elif "frontend" in r_lower or "ui" in r_lower or "react" in r_lower:
+            return "CN"
+        elif "python" in r_lower:
+            return "Python"
+        elif "java" in r_lower:
+            return "Java"
+        return "DSA"
+
+    t_clean = topic_str.lower()
+    if any(k in t_clean for k in ["dsa", "data structure", "algorithm", "sort", "search", "stack", "queue", "tree", "graph", "recursion"]):
+        return "DSA"
+    if any(k in t_clean for k in ["dbms", "database", "sql", "query", "nosql", "postgres", "mongodb", "transaction", "acid"]):
+        return "DBMS"
+    if any(k in t_clean for k in ["os", "operating system", "process", "thread", "scheduling", "deadlock", "memory management"]):
+        return "OS"
+    if any(k in t_clean for k in ["cn", "network", "tcp", "udp", "ip", "dns", "http", "socket", "websocket"]):
+        return "CN"
+    if any(k in t_clean for k in ["oop", "object oriented", "class", "inheritance", "polymorphism", "encapsulation", "abstraction"]):
+        return "OOP"
+    if any(k in t_clean for k in ["system design", "scaling", "architecture", "microservice", "load balancer", "kafka", "distributed"]):
+        return "System Design"
+    if any(k in t_clean for k in ["ml", "machine learning", "data science", "regression", "classification", "model", "neural"]):
+        return "ML"
+    if "python" in t_clean:
+        return "Python"
+    if "java" in t_clean:
+        return "Java"
+    if any(k in t_clean for k in ["aptitude", "puzzle", "math", "logical"]):
+        return "Aptitude"
+
+    # Fallback to substring matching
+    for t_name in ["DSA", "DBMS", "OS", "CN", "OOP", "System Design", "ML", "Python", "Java", "Aptitude"]:
+        if t_name.lower() in t_clean or t_clean in t_name.lower():
+            return t_name
+
+    return "DSA"
+
+
 class InterviewAgent:
     def __init__(self):
         self.client = GraniteClient()
@@ -171,30 +216,23 @@ class InterviewAgent:
         topic: str = "",
         syllabus: list = None,
     ):
-        initial_topic = "DSA"
-        if topic:
-            for t_name in QUESTION_BANK.keys():
-                if t_name.lower() in topic.lower() or topic.lower() in t_name.lower():
-                    initial_topic = t_name
-                    break
+        initial_topic = classify_topic(topic, role)
+        
+        # Map week to starting difficulty level
+        if week == 1:
+            start_diff = "Easy"
+        elif week == 2:
+            start_diff = "Medium"
+        elif week == 3:
+            start_diff = "Hard"
         else:
-            r_lower = role.lower()
-            if "data" in r_lower or "ml" in r_lower or "machine learning" in r_lower or "scientist" in r_lower:
-                initial_topic = "ML"
-            elif "backend" in r_lower:
-                initial_topic = "DBMS"
-            elif "frontend" in r_lower or "ui" in r_lower or "react" in r_lower:
-                initial_topic = "CN"
-            elif "python" in r_lower:
-                initial_topic = "Python"
-            elif "java" in r_lower:
-                initial_topic = "Java"
+            start_diff = "Expert"
 
-        initial_q = QUESTION_BANK[initial_topic]["Easy"][0]
+        initial_q = QUESTION_BANK[initial_topic][start_diff][0]
 
         return {
             "role": role,
-            "difficulty": "Easy",
+            "difficulty": start_diff,
             "question": initial_q,
             "previous_score": previous_score,
             "mode": "standard",
