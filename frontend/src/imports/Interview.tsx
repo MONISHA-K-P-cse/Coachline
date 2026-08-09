@@ -728,7 +728,94 @@ export default function Interview({ navigate }: Props) {
                     </div>
                   ))}
                 </div>
+            </div>
+
+            {/* Bento Grid for Extra Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Difficulty & Study Plan Panel */}
+              <div className="flex flex-col gap-6">
+                {/* Highest Difficulty reached */}
+                <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-text-muted block mb-2">Highest Difficulty Reached</span>
+                  <div className="flex items-center gap-3">
+                    <div className="px-3 py-1.5 rounded-lg bg-rust/10 border border-rust/20 text-rust font-bold text-sm">
+                      {ended.difficulty_reached || 'Easy'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI Study Plan */}
+                {ended.study_plan && (
+                  <div className="p-6 rounded-2xl border border-rust/20 bg-rust/5 relative overflow-hidden flex flex-col gap-2">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-rust block">Recommended AI Study Plan</span>
+                    <p className="text-xs text-text leading-relaxed font-medium">
+                      {ended.study_plan}
+                    </p>
+                  </div>
+                )}
               </div>
+
+              {/* Topic-wise Skill Graph Scores */}
+              {ended.topic_wise_scores && (
+                <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel flex flex-col gap-4">
+                  <h4 className="font-display text-sm font-bold text-text mb-2">Topic-Wise Skill Matrix</h4>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    {Object.entries(ended.topic_wise_scores).map(([topic, val]) => (
+                      <div key={topic} className="flex flex-col gap-1">
+                        <div className="flex justify-between text-[10px] font-semibold text-text-muted capitalize">
+                          <span>{topic}</span>
+                          <span>{Math.round(val as number)}%</span>
+                        </div>
+                        <div className="w-full h-1 bg-border/40 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-rust" 
+                            style={{ width: `${val}%` }} 
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Strengths & Weaknesses Panel */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Strong Topics */}
+              <div className="p-6 rounded-2xl border border-green-500/10 bg-green-500/5 glass-panel">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-green-500 block mb-3">Strong Topics</span>
+                {ended.strong_topics && ended.strong_topics.length > 0 ? (
+                  <ul className="flex flex-wrap gap-2">
+                    {ended.strong_topics.map((t, idx) => (
+                      <li key={idx} className="px-2 py-1 rounded bg-green-500/10 border border-green-500/20 text-[10px] text-green-500 font-semibold">
+                        {t}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span className="text-xs text-text-muted italic">No strong topics recorded. Keep practicing to build strengths!</span>
+                )}
+              </div>
+
+              {/* Weak Topics */}
+              <div className="p-6 rounded-2xl border border-red-500/10 bg-red-500/5 glass-panel">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-red-500 block mb-3">Weak Topics</span>
+                {ended.weak_topics && ended.weak_topics.length > 0 ? (
+                  <ul className="flex flex-wrap gap-2">
+                    {ended.weak_topics.map((t, idx) => (
+                      <li key={idx} className="px-2 py-1 rounded bg-red-500/10 border border-red-500/20 text-[10px] text-red-500 font-semibold">
+                        {t}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span className="text-xs text-text-muted italic">No weak topics recorded. Outstanding job!</span>
+                )}
+              </div>
+
             </div>
 
             {/* Return action bar */}

@@ -40,6 +40,12 @@ try:
             conn.execute(text("ALTER TABLE interview_sessions ADD COLUMN topic VARCHAR"))
             conn.commit()
             logger.info("Auto-migrated database: added topic column to interview_sessions table.")
+        try:
+            conn.execute(text("SELECT metadata_json FROM interview_sessions LIMIT 1"))
+        except Exception:
+            conn.execute(text("ALTER TABLE interview_sessions ADD COLUMN metadata_json JSON"))
+            conn.commit()
+            logger.info("Auto-migrated database: added metadata_json column to interview_sessions table.")
 except Exception as e:
     logger.warning("Auto-migration check failed: %s", e)
 

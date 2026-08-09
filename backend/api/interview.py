@@ -94,23 +94,39 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                 experience_level = profile.experience_level if profile and profile.experience_level else ""
                 candidate_background = _candidate_background(db, user_id)
 
+                metadata = {
+                    "current_difficulty": "Easy",
+                    "difficulty_reached": "Easy",
+                    "weak_topics": [],
+                    "strong_topics": [],
+                    "questions_asked": [],
+                    "live_skill_scores": {
+                        "DSA": 50.0,
+                        "DBMS": 50.0,
+                        "OS": 50.0,
+                        "CN": 50.0,
+                        "OOP": 50.0,
+                        "System Design": 50.0,
+                        "ML": 50.0,
+                        "Python": 50.0,
+                        "Java": 50.0,
+                        "Aptitude": 50.0
+                    },
+                    "study_plan": ""
+                }
                 session = InterviewSession(
                     user_id=user_id,
                     role=role,
                     status="active",
                     started_at=datetime.utcnow(),
                     week=week,
-                    topic=topic
+                    topic=topic,
+                    metadata_json=metadata
                 )
                 db.add(session)
                 db.commit()
                 db.refresh(session)
 
-                # Real agent call for the opening question too - role,
-                # experience level, and (if available) the candidate's own
-                # resume background all shape it, instead of a fixed
-                # "REST APIs and database design" template with only the
-                # role name spliced in.
                 try:
                     opening = await run_in_threadpool(
                         interview_agent.generate_question,
@@ -120,6 +136,10 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                 except Exception as exc:
                     logger.warning("Interview agent opening question failed (%s); using placeholder question.", exc)
                     initial_q = f"Welcome to your {role} mock interview for Week {week}: {topic or role}! To begin, please introduce yourself and your experience relevant to this week's topics."
+
+                metadata["questions_asked"].append(initial_q)
+                session.metadata_json = metadata
+                db.commit()
 
                 qa = QuestionAnswer(
                     session_id=session.id,
@@ -166,43 +186,29 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                     ).order_by(QuestionAnswer.turn_number.asc()).all()
                     history_list = [{"question": qa.question, "score": qa.score} for qa in qa_history]
 
-                    eval_result, next_q = await run_in_threadpool(
+                    current_metadata = session.metadata_json or {}
+                    duration_seconds = 0
+                    if current_qa and current_qa.created_at:
+                        duration_seconds = int((datetime.utcnow() - current_qa.created_at).total_seconds())
+
+                    eval_result, next_q, updated_metadata = await run_in_threadpool(
                         interview_agent.evaluate_and_generate_next,
                         session.role, question_text, user_answer, experience_level, candidate_background,
-                        session.week, session.topic, week_syllabus, history_list
+                        session.week, session.topic, week_syllabus, history_list, current_metadata, duration_seconds
                     )
+                    session.metadata_json = updated_metadata
+                    db.commit()
                 except Exception as exc:
                     logger.warning(
-                        "Combined eval+next-question call failed (%s); falling back to two separate calls.", exc
+                        "Combined eval+next-question call failed (%s); using fallback mock result.", exc
                     )
-                    try:
-                        eval_result = await run_in_threadpool(
-                            eval_agent.evaluate_answer, question_text, user_answer
-                        )
-                    except Exception as exc2:
-                        logger.warning("Eval agent call failed (%s); using placeholder score.", exc2)
-                        eval_result = _placeholder_eval()
-
-                    fallback_score = eval_result["overall_score"]
-                    try:
-                        if fallback_score >= DEVILS_ADVOCATE_SCORE_THRESHOLD:
-                            next_q = await run_in_threadpool(
-                                interview_agent.generate_devils_advocate_question,
-                                session.role, question_text, user_answer,
-                            )
-                        else:
-                            next_q = await run_in_threadpool(
-                                interview_agent.generate_question,
-                                session.role, fallback_score, experience_level, candidate_background, False,
-                                session.week, session.topic, week_syllabus
-                            )
-                    except Exception as exc2:
-                        logger.warning("Interview agent question generation failed (%s); using placeholder question.", exc2)
-                        next_q = {
-                            "question": f"Let's continue - tell me more about your hands-on experience relevant to the {session.role} role.",
-                            "difficulty": "Medium",
-                            "mode": "standard",
-                        }
+                    eval_result = _placeholder_eval()
+                    updated_metadata = session.metadata_json or {}
+                    next_q = {
+                        "question": "Let's continue - tell me more about your hands-on experience in this technical area.",
+                        "difficulty": updated_metadata.get("current_difficulty", "Easy"),
+                        "mode": "standard"
+                    }
 
                 score = eval_result["overall_score"]
                 tech_score = eval_result["technical_score"]
@@ -310,7 +316,33 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                     session.confidence_score = _avg("confidence_score")
                     session.star_score = _avg("star_score")
 
+                    metadata = session.metadata_json or {}
+                    weak_topics_list = metadata.get("weak_topics", [])
+                    strong_topics_list = metadata.get("strong_topics", [])
+
+                    try:
+                        study_plan_prompt = f"""You are an expert career coach and technical interviewer.
+The candidate has just completed an interview with the following profile:
+Role: {session.role}
+Average Score: {session.average_score}%
+Weak Topics: {weak_topics_list}
+Strong Topics: {strong_topics_list}
+
+Generate a concise, highly actionable 2-3 sentence Study Plan recommending specific focus areas and learning strategies to improve on their weaknesses.
+Do NOT use JSON. Keep the summary encouraging and direct.
+"""
+                        study_plan_text = await run_in_threadpool(
+                            interview_agent.client.generate, study_plan_prompt
+                        )
+                        study_plan_text = study_plan_text.strip()
+                    except Exception as exc:
+                        logger.warning("Study plan generation failed (%s); using default plan.", exc)
+                        study_plan_text = "Focus on reviewing your weak technical topics and practicing structural communication (using the STAR method) for technical explanations."
+
+                    metadata["study_plan"] = study_plan_text
+                    session.metadata_json = metadata
                     db.commit()
+
                     await websocket.send_json({
                         "event": "ended",
                         "session_id": session.id,
@@ -321,7 +353,12 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                             "behavioral": session.behavioral_score,
                             "confidence": session.confidence_score,
                             "star_method": session.star_score
-                        }
+                        },
+                        "difficulty_reached": metadata.get("difficulty_reached", "Easy"),
+                        "weak_topics": weak_topics_list,
+                        "strong_topics": strong_topics_list,
+                        "topic_wise_scores": metadata.get("live_skill_scores", {}),
+                        "study_plan": study_plan_text
                     })
                 break
 

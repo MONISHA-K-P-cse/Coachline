@@ -16,6 +16,8 @@ class EvalAgentResult(ScoreBreakdown):
     overall_score: float
     feedback: str
     weak_topics: List[str] = []
+    strong_topics: List[str] = []
+    remedial_explanation: Optional[str] = ""
     fallback_used: bool = False
 
 class QuestionAnswerResponse(BaseModel):

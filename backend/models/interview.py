@@ -20,6 +20,7 @@ class InterviewSession(Base):
     ended_at = Column(DateTime, nullable=True)
     week = Column(Integer, default=1)
     topic = Column(String, nullable=True)
+    metadata_json = Column(JSON, nullable=True)
 
     user = relationship("User", back_populates="interviews")
     qa_pairs = relationship("QuestionAnswer", back_populates="session", cascade="all, delete-orphan")

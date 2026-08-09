@@ -6,6 +6,7 @@ from ai.agents.granite_client import GraniteClient
 from ai.agents.llm_json import extract_json
 from ai.rag.retriever import retrieve
 from backend.schemas.interview import EvalAgentResult
+from ai.agents.question_bank import QUESTION_BANK
 
 logger = logging.getLogger("interview_agent")
 
@@ -170,77 +171,31 @@ class InterviewAgent:
         topic: str = "",
         syllabus: list = None,
     ):
-        context = "\n\n".join(
-            retrieve(role, k=3)
-        )
-
-        # Blend the candidate's stated experience level with how they've
-        # actually scored so far, so a self-described Senior candidate
-        # starts harder than a self-described Entry-level one even before
-        # either has scored anything, and both still adapt from there.
-        level_rank = _LEVEL_RANK.get(experience_level.lower().strip(), 1)
-        combined_rank = round((level_rank + _score_rank(previous_score)) / 2)
-        difficulty = _DIFFICULTY_NAMES[combined_rank]
-
-        opening_instructions = (
-            f"""This is the FIRST question of the interview for Week {week}: {topic or role}.
-Open with a brief warm one-sentence welcome that mentions the week topic, then ask the candidate
-to introduce themselves and their experience specifically related to this week's topics."""
-            if is_opening_question
-            else f"Generate ONE interview question that follows on from the interview so far. It MUST be about one of the Week {week} syllabus topics listed above."
-        )
-
-        bg_part = f"Candidate Background (from their resume):\n{candidate_background}" if candidate_background else ""
-        exp_part = f"Candidate Experience Level: {experience_level}" if experience_level else ""
-        syllabus_part = (
-            f"""Week {week} Syllabus Subtopics (MANDATORY - your question MUST be specifically about one of these):
-""" + "\n".join(f"  - {s}" for s in syllabus)
-        ) if syllabus else f"Week {week} Topic: {topic or role}"
-
-        prompt = f"""
-You are an expert technical interviewer.
-
-Role:
-{role}
-{exp_part}
-{bg_part}
-
-{syllabus_part}
-
-Difficulty:
-{difficulty}
-
-Reference Material (only use if directly relevant to the syllabus topics above):
-{context}
-
-Calibrate the question's depth and phrasing to the candidate's experience
-level above (if given) as well as the target difficulty. The question MUST
-be directly about one of the syllabus subtopics listed above - do not ask
-about unrelated CS topics.
-
-{opening_instructions}
-
-Then provide:
-
-Expected Answer:
-Hints:
-
-Do NOT use JSON.
-"""
-
-        response = self.client.generate(prompt)
-
-        # Override response to return only standard questions from the weekly syllabus
-        q_list = get_syllabus_questions(role, week)
-        if is_opening_question:
-            q_text = f"Welcome to your mock interview! Let's start with the Week {week} topic: {topic or 'Technical Foundations'}. Could you introduce yourself briefly and explain how you would tackle this question: {q_list[0]}"
+        initial_topic = "DSA"
+        if topic:
+            for t_name in QUESTION_BANK.keys():
+                if t_name.lower() in topic.lower() or topic.lower() in t_name.lower():
+                    initial_topic = t_name
+                    break
         else:
-            q_text = q_list[0]
+            r_lower = role.lower()
+            if "data" in r_lower or "ml" in r_lower or "machine learning" in r_lower or "scientist" in r_lower:
+                initial_topic = "ML"
+            elif "backend" in r_lower:
+                initial_topic = "DBMS"
+            elif "frontend" in r_lower or "ui" in r_lower or "react" in r_lower:
+                initial_topic = "CN"
+            elif "python" in r_lower:
+                initial_topic = "Python"
+            elif "java" in r_lower:
+                initial_topic = "Java"
+
+        initial_q = QUESTION_BANK[initial_topic]["Easy"][0]
 
         return {
             "role": role,
-            "difficulty": difficulty,
-            "question": q_text,
+            "difficulty": "Easy",
+            "question": initial_q,
             "previous_score": previous_score,
             "mode": "standard",
         }
@@ -322,44 +277,33 @@ Do NOT use JSON. Keep the question brief and encouraging.
         topic: str = "",
         syllabus: list = None,
         history: list = None,
+        session_metadata: dict = None,
+        duration_seconds: int = 0
     ):
-        """
-        Scores the candidate's answer AND produces the next question in a
-        SINGLE Granite call, instead of two sequential round-trips (eval,
-        then next-question generation). On CPU-only inference each call can
-        take 15-100s+, so halving the number of calls per turn roughly
-        halves the "evaluating..." wait. Falls back to the two-call path
-        (see interview.py) if this combined call's output can't be parsed.
-        """
-        context = "\n\n".join(retrieve(role, k=3))
-
         bg_part = f"Candidate Background (from their resume):\n{candidate_background}" if candidate_background else ""
         exp_part = f"Candidate Experience Level: {experience_level}" if experience_level else ""
-        syllabus_part = (
-            f"""Week {week} Syllabus Subtopics (the next_question MUST cover one of these):
-""" + "\n".join(f"  - {s}" for s in syllabus)
-        ) if syllabus else f"Week {week} Topic: {topic or role}"
 
         prompt = f"""You are an expert technical interviewer conducting a mock interview for the following candidate profile:
 
-Role:
-{role}
+Role: {role}
 {exp_part}
 {bg_part}
 
-{syllabus_part}
-
-Reference Material (only use if directly relevant to the syllabus topics above):
-{context}
-
 The candidate was just asked:
-{question}
+"{question}"
 
 The candidate answered:
-{answer}
+"{answer}"
 
-Respond with STRICT JSON ONLY. No prose, no markdown code fences, no
-commentary before or after the JSON object.
+Evaluate their answer based on:
+1. Technical correctness
+2. Completeness
+3. Communication clarity
+4. Confidence
+5. Response time (response was completed in {duration_seconds} seconds)
+6. Follow-up quality (relevance to the prompt)
+
+Respond with STRICT JSON ONLY. No prose, no markdown code fences, no commentary before or after the JSON object.
 
 The JSON object MUST match exactly this schema:
 {{
@@ -369,139 +313,209 @@ The JSON object MUST match exactly this schema:
   "confidence_score": <number 0-100>,
   "star_score": <number 0-100>,
   "overall_score": <number 0-100, weighted overall impression>,
-  "feedback": <string, strengths and weaknesses of the answer>,
+  "feedback": <string, detailed strengths and weaknesses of the answer>,
   "weak_topics": [<string>, ...],
-  "mode": "standard" or "devils_advocate",
-  "next_question": <string, the next interview question - see rules below>
+  "strong_topics": [<string>, ...],
+  "remedial_explanation": <string, if overall_score is < 50, provide a brief 2-3 sentence educational teaching explaining the correct concept. Otherwise, empty string.>
 }}
-
-Base every score strictly on the substance, correctness and depth of the
-candidate answer above. A vague, incorrect or incomplete answer must score
-noticeably lower than a precise, well-reasoned one. "weak_topics" MUST be
-derived only from actual gaps in the candidate's answer above - never from
-the Reference Material or any unrelated subject area - and should be an
-empty list if there are none.
-
-Rules for "next_question" and "mode":
-- If overall_score is 80 or above, set "mode" to "devils_advocate" and make
-  "next_question" push back on the candidate's OWN answer above: identify a
-  specific edge case, trade-off, or weak point in what THEY actually said,
-  and challenge them to defend or refine it. It must reference specifics
-  from their real answer, not a generic follow-up.
-- Otherwise, set "mode" to "standard" and make "next_question" a genuinely
-  new question. Its SUBJECT MATTER must be about one of the Week Syllabus
-  Subtopics listed above. Calibrate its difficulty to the candidate's experience
-  level (if given) blended with the overall_score you just gave this
-  answer: entry-level or a low score should get an easier, single-concept
-  question; senior-level or a high score should get a harder question
-  probing trade-offs, scale, or failure modes.
 """
-
         raw = self.client.generate(prompt)
         data = extract_json(raw)
 
-        result = EvalAgentResult(
-            technical_score=float(data["technical_score"]),
-            communication_score=float(data["communication_score"]),
-            behavioral_score=float(data["behavioral_score"]),
-            confidence_score=float(data["confidence_score"]),
-            star_score=float(data["star_score"]),
-            overall_score=float(data["overall_score"]),
-            feedback=str(data["feedback"]),
-            weak_topics=[str(t) for t in data.get("weak_topics", [])],
-            fallback_used=False,
-        ).model_dump()
+        # Build EvalResult dictionary
+        result = {
+            "technical_score": float(data.get("technical_score", 50.0)),
+            "communication_score": float(data.get("communication_score", 50.0)),
+            "behavioral_score": float(data.get("behavioral_score", 50.0)),
+            "confidence_score": float(data.get("confidence_score", 50.0)),
+            "star_score": float(data.get("star_score", 50.0)),
+            "overall_score": float(data.get("overall_score", 50.0)),
+            "feedback": str(data.get("feedback", "No feedback provided.")),
+            "weak_topics": [str(t) for t in data.get("weak_topics", [])],
+            "strong_topics": [str(t) for t in data.get("strong_topics", [])],
+            "remedial_explanation": str(data.get("remedial_explanation", "")),
+            "fallback_used": False
+        }
 
-        next_question = str(data["next_question"]).strip()
-        if not next_question:
-            raise ValueError("Combined call returned an empty next_question")
+        # Retrieve and initialize session metadata
+        meta = dict(session_metadata) if session_metadata else {}
+        if "current_difficulty" not in meta:
+            meta["current_difficulty"] = "Easy"
+        if "difficulty_reached" not in meta:
+            meta["difficulty_reached"] = "Easy"
+        if "weak_topics" not in meta:
+            meta["weak_topics"] = []
+        if "strong_topics" not in meta:
+            meta["strong_topics"] = []
+        if "questions_asked" not in meta:
+            meta["questions_asked"] = []
+        if "live_skill_scores" not in meta:
+            meta["live_skill_scores"] = {
+                "DSA": 50.0, "DBMS": 50.0, "OS": 50.0, "CN": 50.0, "OOP": 50.0,
+                "System Design": 50.0, "ML": 50.0, "Python": 50.0, "Java": 50.0, "Aptitude": 50.0
+            }
+        if "consecutive_followups" not in meta:
+            meta["consecutive_followups"] = 0
 
-        mode = data.get("mode") if data.get("mode") in ("standard", "devils_advocate") else (
-            "devils_advocate" if result["overall_score"] >= DEVILS_ADVOCATE_SCORE_THRESHOLD else "standard"
-        )
+        # Register current question in history
+        if question not in meta["questions_asked"]:
+            meta["questions_asked"].append(question)
 
-        # Override standard next questions to implement Adaptive Difficulty Syllabus sequencing
-        if mode == "standard":
-            q_list = get_syllabus_questions(role, week)
-            current_q_lower = question.lower()
-            difficulty_tier = "Standard"
+        # Add weak/strong topics
+        for wt in result["weak_topics"]:
+            if wt not in meta["weak_topics"]:
+                meta["weak_topics"].append(wt)
+        for st in result["strong_topics"]:
+            if st not in meta["strong_topics"]:
+                meta["strong_topics"].append(st)
 
-            # Check if current question matches any main syllabus question
-            current_syllabus_idx = -1
-            if q_list[0].lower() in current_q_lower:
-                current_syllabus_idx = 0
-            elif q_list[1].lower() in current_q_lower:
-                current_syllabus_idx = 1
-            elif q_list[2].lower() in current_q_lower:
-                current_syllabus_idx = 2
+        # Match question to primary topic
+        matched_topic = "DSA"
+        for t_name, difficulties in QUESTION_BANK.items():
+            for diff_lvl, q_list in difficulties.items():
+                if any(q.lower() in question.lower() or question.lower() in q.lower() for q in q_list):
+                    matched_topic = t_name
+                    break
+            if matched_topic != "DSA":
+                break
 
-            if current_syllabus_idx != -1:
-                # Candidate just answered a main syllabus question
-                if current_syllabus_idx == 0:  # Beginner
-                    if result["overall_score"] >= 70.0:
-                        next_question = q_list[1]
-                        difficulty_tier = "Medium"
-                    else:
-                        next_question = self.generate_simpler_question(role, question, answer, week, topic or role)
-                        difficulty_tier = "Beginner (Follow-up)"
-                elif current_syllabus_idx == 1:  # Medium
-                    if result["overall_score"] >= 70.0:
-                        next_question = q_list[2]
-                        difficulty_tier = "Hard"
-                    else:
-                        next_question = self.generate_simpler_question(role, question, answer, week, topic or role)
-                        difficulty_tier = "Medium (Follow-up)"
-                else:  # Hard (q_list[2])
-                    next_question = "Thank you! We have completed all the questions for this week's syllabus. I will now compile your overall performance score."
-                    difficulty_tier = "Completed"
-            else:
-                # Candidate just answered a dynamic simpler follow-up / remedial question
-                parent_syllabus_idx = -1
-                for h in reversed(history or []):
-                    q_text = h["question"].lower()
-                    if q_list[0].lower() in q_text:
-                        parent_syllabus_idx = 0
+        # Update skill score for matched topic
+        overall_score = result["overall_score"]
+        delta = (overall_score - 70.0) * 0.5
+        meta["live_skill_scores"][matched_topic] = max(0.0, min(100.0, meta["live_skill_scores"][matched_topic] + delta))
+
+        # Adjust general skill scores matching keywords in weak/strong topics
+        TOPICS_LIST = ["DSA", "DBMS", "OS", "CN", "OOP", "System Design", "ML", "Python", "Java", "Aptitude"]
+        for topic_key in TOPICS_LIST:
+            t_lower = topic_key.lower()
+            for wt in result["weak_topics"]:
+                if t_lower in wt.lower():
+                    meta["live_skill_scores"][topic_key] = max(0.0, meta["live_skill_scores"][topic_key] - 3.0)
+            for st in result["strong_topics"]:
+                if t_lower in st.lower():
+                    meta["live_skill_scores"][topic_key] = min(100.0, meta["live_skill_scores"][topic_key] + 2.0)
+
+        # Update current difficulty
+        DIFFICULTY_LEVELS = ["Easy", "Medium", "Hard", "Expert"]
+        curr_idx = DIFFICULTY_LEVELS.index(meta["current_difficulty"])
+        
+        # Difficulty rules
+        if overall_score >= 85.0:
+            curr_idx = min(3, curr_idx + 1)
+        elif overall_score < 50.0:
+            curr_idx = max(0, curr_idx - 1)
+            
+        meta["current_difficulty"] = DIFFICULTY_LEVELS[curr_idx]
+        
+        # Update difficulty reached
+        highest_reached_idx = DIFFICULTY_LEVELS.index(meta["difficulty_reached"])
+        if curr_idx > highest_reached_idx:
+            meta["difficulty_reached"] = DIFFICULTY_LEVELS[curr_idx]
+
+        # Determine next question path
+        next_question = ""
+        difficulty_tier = meta["current_difficulty"]
+        mode = "standard"
+
+        # 1. Good Answer (Score >= 70) and we can do a Dynamic Follow-up
+        if overall_score >= 70.0 and meta["consecutive_followups"] < 1:
+            meta["consecutive_followups"] += 1
+            mode = "followup"
+            difficulty_tier = meta["current_difficulty"]
+            
+            followup_prompt = f"""You are an expert technical interviewer.
+The candidate was asked: "{question}"
+They answered: "{answer}"
+Which scored {overall_score} (Good answer).
+
+Generate ONE brief, specific technical follow-up question asking them to defend their answer, explain trade-offs, discuss scalability, optimize the implementation, or handle an edge case. Do not be generic.
+Do NOT use JSON. Keep the question under 2 sentences.
+"""
+            next_question = self.client.generate(followup_prompt).strip()
+
+        # 2. Weak Answer (Score < 70)
+        elif overall_score < 70.0:
+            meta["consecutive_followups"] = 0
+            
+            # Case 2a: Score < 50 (Step back + Explain prerequisite concept)
+            if overall_score < 50.0:
+                mode = "remedial"
+                unused_q = None
+                prereq_diff = "Easy"
+                for q_candidate in QUESTION_BANK[matched_topic][prereq_diff]:
+                    if q_candidate not in meta["questions_asked"]:
+                        unused_q = q_candidate
                         break
-                    elif q_list[1].lower() in q_text:
-                        parent_syllabus_idx = 1
-                        break
-                    elif q_list[2].lower() in q_text:
-                        parent_syllabus_idx = 2
-                        break
+                if not unused_q:
+                    unused_q = f"Let's go back to the basic principles of {matched_topic}. Can you explain its core concept in simple terms?"
+                    
+                remedial_explanation = result["remedial_explanation"] or f"In {matched_topic}, it is important to build on solid fundamentals first."
+                next_question = f"Let's step back and look at a prerequisite concept. First, a brief explanation: {remedial_explanation}\n\nQuestion: {unused_q}"
+                difficulty_tier = "Easy"
                 
-                # Check how many questions have been asked in total so far
-                total_turns = len(history or [])
-                if total_turns >= 4:
-                    # Conclude the interview if it is running too long
-                    next_question = "Thank you! We have completed all the questions for this week's syllabus. I will now compile your overall performance score."
-                    difficulty_tier = "Completed"
-                elif parent_syllabus_idx == 0:
-                    if result["overall_score"] >= 70.0:
-                        # Candidate showed improvement! Progress to Medium
-                        next_question = q_list[1]
-                        difficulty_tier = "Medium"
-                    else:
-                        # Candidate still struggles, ask another simpler question or conclude if turn limit reached
-                        next_question = self.generate_simpler_question(role, question, answer, week, topic or role)
-                        difficulty_tier = "Beginner (Remedial)"
-                elif parent_syllabus_idx == 1:
-                    if result["overall_score"] >= 70.0:
-                        # Candidate improved! Progress to Hard
-                        next_question = q_list[2]
-                        difficulty_tier = "Hard"
-                    else:
-                        next_question = self.generate_simpler_question(role, question, answer, week, topic or role)
-                        difficulty_tier = "Medium (Remedial)"
-                else:
-                    # Fallback to beginner
-                    next_question = q_list[0]
-                    difficulty_tier = "Beginner"
+            # Case 2b: Score 50-69 (Stay at same level, ask another question on same concept)
+            else:
+                mode = "standard"
+                unused_q = None
+                for q_candidate in QUESTION_BANK[matched_topic][meta["current_difficulty"]]:
+                    if q_candidate not in meta["questions_asked"]:
+                        unused_q = q_candidate
+                        break
+                if not unused_q:
+                    unused_q = f"Could you walk me through another scenario involving {matched_topic}?"
+                    
+                next_question = f"Let's try another question on the same level: {unused_q}"
+
+        # 3. Transition to a new topic (after follow-up or on progression)
         else:
-            difficulty_tier = "Devil's Advocate"
+            meta["consecutive_followups"] = 0
+            
+            # Select next untested topic
+            untested_topics = [t for t in TOPICS_LIST if not any(t in q for q in meta["questions_asked"])]
+            if untested_topics:
+                next_topic = untested_topics[0]
+            else:
+                # Pick topic with lowest skill score
+                next_topic = min(meta["live_skill_scores"], key=meta["live_skill_scores"].get)
+                
+            # Determine target difficulty based on that topic's current score
+            target_diff = "Easy"
+            skill_score = meta["live_skill_scores"][next_topic]
+            if skill_score >= 85.0:
+                target_diff = "Expert"
+            elif skill_score >= 70.0:
+                target_diff = "Hard"
+            elif skill_score >= 50.0:
+                target_diff = "Medium"
+                
+            unused_q = None
+            for q_candidate in QUESTION_BANK[next_topic][target_diff]:
+                if q_candidate not in meta["questions_asked"]:
+                    unused_q = q_candidate
+                    break
+            
+            # Try adjacent difficulties if no question found
+            if not unused_q:
+                for diff_lvl in DIFFICULTY_LEVELS:
+                    for q_candidate in QUESTION_BANK[next_topic][diff_lvl]:
+                        if q_candidate not in meta["questions_asked"]:
+                            unused_q = q_candidate
+                            break
+                    if unused_q:
+                        break
+                        
+            if not unused_q:
+                unused_q = f"Let's explore your knowledge in {next_topic}. What is the most complex design choice you made in this domain?"
+                
+            next_question = unused_q
+            difficulty_tier = target_diff
+
+        if next_question not in meta["questions_asked"]:
+            meta["questions_asked"].append(next_question)
 
         return result, {
             "role": role,
             "difficulty": difficulty_tier,
             "question": next_question,
             "mode": mode,
-        }
+        }, meta
