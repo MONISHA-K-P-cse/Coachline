@@ -133,13 +133,7 @@ export default function Workspace({ navigate }: Props) {
   const [loading, setLoading] = useState(true)
   const [analyzing, setAnalyzing] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
-  const [resumeView, setResumeView] = useState<'scores' | 'network' | 'jd'>('scores')
-  const [jdText, setJdText] = useState('')
-  const [jdRole, setJdRole] = useState('')
-  const [jdCompany, setJdCompany] = useState('')
-  const [jdAnalysis, setJdAnalysis] = useState<api.JobDescriptionResponse | null>(null)
-  const [analyzingJd, setAnalyzingJd] = useState(false)
-  const [jdError, setJdError] = useState<string | null>(null)
+
 
   const [improving, setImproving] = useState(false)
   const [showImproveModal, setShowImproveModal] = useState(false)
@@ -277,20 +271,7 @@ export default function Workspace({ navigate }: Props) {
     }
   }
 
-  const handleJdAnalyze = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!jdText.trim() || !jdRole.trim()) return
-    setAnalyzingJd(true)
-    setJdError(null)
-    try {
-      const result = await api.uploadJobDescription(jdRole.trim(), jdCompany.trim(), jdText.trim())
-      setJdAnalysis(result)
-    } catch (err) {
-      setJdError(err instanceof api.ApiError ? err.message : 'JD Analysis failed.')
-    } finally {
-      setAnalyzingJd(false)
-    }
-  }
+
 
   const masteredCount = topicMastery.filter((t) => t.mastery_score >= 70).length
   const sessionsThisWeek = sessions.filter((s) => Date.now() - new Date(s.started_at).getTime() < 7 * 86400000).length
@@ -533,34 +514,13 @@ export default function Workspace({ navigate }: Props) {
             {/* Upload Area & Graph representation */}
             <div className="lg:col-span-2 flex flex-col gap-6">
               
-              {/* Skill network visualizer */}
+              {/* Resume analysis display */}
               <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h3 className="font-display text-base font-bold text-text">Resume Skill network</h3>
-                    <p className="text-xs text-text-muted mt-0.5">Identified keywords and targeted missing concepts.</p>
+                    <h3 className="font-display text-base font-bold text-text">Resume Review & Metrics</h3>
+                    <p className="text-xs text-text-muted mt-0.5">Calculated overall scoring, strengths and improvements.</p>
                   </div>
-                  {latestResume && (
-                    <div className="flex bg-panel-bg p-0.5 rounded-lg border border-border/80">
-                      {[
-                        { id: 'scores', label: 'Detailed Summary' },
-                        { id: 'network', label: 'Keyword Insights' },
-                        { id: 'jd', label: 'JD Matcher (Unique)' }
-                      ].map((view) => (
-                        <button
-                          key={view.id}
-                          onClick={() => setResumeView(view.id as any)}
-                          className={`px-3 py-1 rounded-md text-[10px] font-semibold transition-all cursor-pointer ${
-                            resumeView === view.id
-                              ? 'bg-card-bg text-rust shadow-sm'
-                              : 'text-text-muted hover:text-text'
-                          }`}
-                        >
-                          {view.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 {/* Upload drag-and-drop placeholder */}
@@ -578,7 +538,7 @@ export default function Workspace({ navigate }: Props) {
                     <span className="text-xs font-bold text-text">Upload Resume PDF / Word</span>
                     <span className="text-[10px] text-text-muted mt-1">Accepts documents up to 5MB</span>
                   </div>
-                ) : resumeView === 'scores' ? (
+                ) : (
                   <div className="flex flex-col gap-6">
                     
                     {/* ATS and overall counts */}
@@ -630,204 +590,6 @@ export default function Workspace({ navigate }: Props) {
                         </div>
                       </div>
                     </div>
-                  </div>
-                ) : resumeView === 'network' ? (
-                  <div className="flex flex-col gap-6">
-                    {/* Header Summary */}
-                    <div className="bg-rust/5 border border-rust/10 p-4 rounded-xl">
-                      <span className="text-[10px] uppercase font-bold text-rust tracking-wider block mb-1">
-                        🎯 ATS Matching Insights
-                      </span>
-                      <p className="text-xs text-text-muted leading-relaxed">
-                        We scanned your resume against the target role requirements. Below is a detailed view of detected skills present in your profile versus critical missing keywords.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Detected Skills Cloud */}
-                      <div className="bg-panel-bg p-5 rounded-xl border border-border/40">
-                        <h4 className="text-[10px] font-bold tracking-wider uppercase text-accent mb-3 flex items-center gap-1.5">
-                          🟢 Detected Skills & Keywords
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {(latestResume.score_details?.strengths ?? []).map((s, idx) => (
-                            <span 
-                              key={idx} 
-                              className="px-2.5 py-1 bg-accent/10 border border-accent/20 text-accent text-[11px] font-medium rounded-lg shadow-sm shadow-accent/5 hover:scale-105 transition-transform"
-                            >
-                              {s}
-                            </span>
-                          ))}
-                          {(!latestResume.score_details?.strengths || latestResume.score_details.strengths.length === 0) && (
-                            <span className="text-xs text-text-muted italic">No keywords detected yet.</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Missing Keywords Cloud */}
-                      <div className="bg-panel-bg p-5 rounded-xl border border-border/40">
-                        <h4 className="text-[10px] font-bold tracking-wider uppercase text-rust mb-3 flex items-center gap-1.5">
-                          🔴 Missing / Suggested Keywords
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {(latestResume.score_details?.improvements ?? []).map((s, idx) => (
-                            <span 
-                              key={idx} 
-                              className="px-2.5 py-1 bg-rust/10 border border-rust/20 text-rust text-[11px] font-medium rounded-lg shadow-sm shadow-rust/5 hover:scale-105 transition-transform"
-                            >
-                              {s}
-                            </span>
-                          ))}
-                          {(!latestResume.score_details?.improvements || latestResume.score_details.improvements.length === 0) && (
-                            <span className="text-xs text-text-muted italic">All target keywords matched!</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-6">
-                    {!jdAnalysis ? (
-                      <form onSubmit={handleJdAnalyze} className="flex flex-col gap-4">
-                        <div className="bg-rust/5 border border-rust/10 p-4 rounded-xl">
-                          <span className="text-[10px] uppercase font-bold text-rust tracking-wider block mb-1">
-                            🎯 Job Description Matcher
-                          </span>
-                          <p className="text-xs text-text-muted leading-relaxed">
-                            Paste the target job description to run a semantic gap analysis. Coachline will identify key missing skills and help you customize your profile.
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
-                              Target Role *
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              placeholder="e.g. Frontend Engineer"
-                              value={jdRole}
-                              onChange={(e) => setJdRole(e.target.value)}
-                              className="px-3.5 py-2 rounded-xl border border-border bg-panel-bg text-xs text-text focus:outline-none focus:border-rust"
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
-                              Company Name
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="e.g. Google"
-                              value={jdCompany}
-                              onChange={(e) => setJdCompany(e.target.value)}
-                              className="px-3.5 py-2 rounded-xl border border-border bg-panel-bg text-xs text-text focus:outline-none focus:border-rust"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
-                            Job Description Text *
-                          </label>
-                          <textarea
-                            required
-                            rows={6}
-                            placeholder="Paste the job description or requirements here..."
-                            value={jdText}
-                            onChange={(e) => setJdText(e.target.value)}
-                            className="px-3.5 py-3 rounded-xl border border-border bg-panel-bg text-xs text-text focus:outline-none focus:border-rust leading-relaxed resize-none"
-                          />
-                        </div>
-
-                        {jdError && (
-                          <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-semibold rounded-xl">
-                            {jdError}
-                          </div>
-                        )}
-
-                        <button
-                          type="submit"
-                          disabled={analyzingJd}
-                          className="px-5 py-2.5 bg-rust hover:bg-rust/90 disabled:opacity-60 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-rust/10 flex items-center justify-center gap-2 cursor-pointer self-start"
-                        >
-                          {analyzingJd ? (
-                            <>
-                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                              <span>Analyzing Requirements...</span>
-                            </>
-                          ) : (
-                            <span>Run Match Analysis</span>
-                          )}
-                        </button>
-                      </form>
-                    ) : (
-                      <div className="flex flex-col gap-6">
-                        {/* Match Results Header */}
-                        <div className="flex flex-col sm:flex-row justify-between sm:items-center p-5 rounded-xl border border-border/40 bg-panel-bg gap-4">
-                          <div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Target Position</span>
-                            <h4 className="font-display text-lg font-bold text-text mt-1">
-                              {jdAnalysis.target_role} <span className="text-rust">@ {jdAnalysis.company_name || 'Target Company'}</span>
-                            </h4>
-                          </div>
-                          <div className="text-right flex flex-col items-end">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Job Fit Score</span>
-                            <div className="font-display text-3xl font-bold text-rust mt-0.5">
-                              {Math.round(
-                                ((latestResume.score_details?.strengths?.length || 2) /
-                                  ((latestResume.score_details?.strengths?.length || 2) +
-                                    (jdAnalysis.skill_gaps?.reduce((acc, curr) => acc + curr.missing_skills.length, 0) || 3))) *
-                                  100
-                              )}%
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Gap analysis breakdown */}
-                        <div className="flex flex-col gap-4">
-                          <h4 className="text-[10px] font-bold tracking-wider uppercase text-text mb-1">
-                            ⚠️ Identified Skill Gaps
-                          </h4>
-
-                          <div className="grid grid-cols-1 gap-4">
-                            {(jdAnalysis.skill_gaps || []).map((gap, idx) => (
-                              <div key={idx} className="p-4 rounded-xl border border-border/50 bg-bg/40 flex flex-col gap-3">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold text-text">{gap.category}</span>
-                                  <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
-                                    gap.priority === 'High'
-                                      ? 'bg-red-500/10 text-red-500'
-                                      : gap.priority === 'Medium'
-                                        ? 'bg-amber-500/10 text-amber-500'
-                                        : 'bg-blue-500/10 text-blue-500'
-                                  }`}>
-                                    {gap.priority} Priority
-                                  </span>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  {gap.missing_skills.map((skill, sIdx) => (
-                                    <span key={sIdx} className="px-2 py-0.5 bg-rust/10 border border-rust/20 text-rust text-[10px] font-medium rounded-md">
-                                      {skill}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Control buttons */}
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => setJdAnalysis(null)}
-                            className="px-4 py-2 border border-border hover:bg-border/20 text-text-muted hover:text-text rounded-lg text-xs font-bold transition-all cursor-pointer"
-                          >
-                            Analyze Another Job
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
