@@ -18,10 +18,104 @@ function parseBlocks(content: string): { type: string; content: string }[] | nul
   }
 }
 
+function renderMarkdown(text: string) {
+  const lines = text.split('\n')
+  const elements: JSX.Element[] = []
+  let listItems: JSX.Element[] = []
+  let inCode = false
+  let codeLines: string[] = []
+  
+  const flushList = (keyPrefix: string) => {
+    if (listItems.length > 0) {
+      elements.push(
+        <ul key={`ul-${keyPrefix}`} className="list-disc pl-5 my-2 flex flex-col gap-1.5 text-text-muted">
+          {listItems}
+        </ul>
+      )
+      listItems = []
+    }
+  }
+
+  const formatBold = (str: string) => {
+    const parts = str.split('**')
+    return parts.map((part, index) => {
+      if (index % 2 === 1) {
+        return <strong key={index} className="font-bold text-text">{part}</strong>
+      }
+      return part
+    })
+  }
+
+  lines.forEach((line, idx) => {
+    if (line.trim().startsWith('```')) {
+      if (inCode) {
+        elements.push(
+          <pre key={`code-${idx}`} className="bg-terminal-bg rounded-xl p-4 text-[11px] overflow-x-auto text-accent font-mono border border-border/10 leading-relaxed my-2">
+            {codeLines.join('\n')}
+          </pre>
+        )
+        codeLines = []
+        inCode = false
+      } else {
+        inCode = true
+      }
+      return
+    }
+    
+    if (inCode) {
+      codeLines.push(line)
+      return
+    }
+
+    const trimmed = line.trim()
+    if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('• ')) {
+      const content = trimmed.substring(2)
+      listItems.push(
+        <li key={`li-${idx}`} className="text-xs sm:text-sm text-text-muted">
+          {formatBold(content)}
+        </li>
+      )
+    } else {
+      flushList(idx.toString())
+      
+      if (trimmed.startsWith('### ')) {
+        elements.push(
+          <h4 key={idx} className="text-xs sm:text-sm font-bold text-rust uppercase tracking-wider mt-4 mb-2">
+            {formatBold(trimmed.substring(4))}
+          </h4>
+        )
+      } else if (trimmed.startsWith('## ')) {
+        elements.push(
+          <h3 key={idx} className="text-sm sm:text-base font-bold text-text mt-5 mb-2 border-b border-border/20 pb-1">
+            {formatBold(trimmed.substring(3))}
+          </h3>
+        )
+      } else if (trimmed.startsWith('# ')) {
+        elements.push(
+          <h2 key={idx} className="text-base sm:text-lg font-bold text-text mt-6 mb-3">
+            {formatBold(trimmed.substring(2))}
+          </h2>
+        )
+      } else if (trimmed === '') {
+        // Empty spacer
+      } else {
+        elements.push(
+          <p key={idx} className="text-xs sm:text-sm text-text-muted leading-relaxed mb-3">
+            {formatBold(trimmed)}
+          </p>
+        )
+      }
+    }
+  })
+  
+  flushList('end')
+  return <div className="flex flex-col">{elements}</div>
+}
+
 function NoteBody({ note }: { note: api.NoteResponse }) {
   const blocks = parseBlocks(note.content)
   if (!blocks) {
-    return <p className="text-xs sm:text-sm text-text-muted leading-relaxed whitespace-pre-wrap">{note.content}</p>
+    return <div className="text-xs sm:text-sm text-text-muted leading-relaxed whitespace-pre-wrap">{renderMarkdown(note.content)}</div>
   }
   return (
     <div className="flex flex-col gap-4 font-sans text-xs sm:text-sm text-text">
@@ -37,11 +131,11 @@ function NoteBody({ note }: { note: api.NoteResponse }) {
           return (
             <div key={i} className="bg-rust/5 border border-rust/20 rounded-xl p-4 my-2">
               <div className="text-[10px] font-bold tracking-wider uppercase text-rust mb-2">Target Exercise</div>
-              <p className="margin-0 text-xs text-text leading-relaxed whitespace-pre-wrap">{b.content}</p>
+              <div className="margin-0 text-xs text-text leading-relaxed">{renderMarkdown(b.content)}</div>
             </div>
           )
         }
-        return <p key={i} className="text-text-muted leading-relaxed whitespace-pre-wrap">{b.content}</p>
+        return <div key={i}>{renderMarkdown(b.content)}</div>
       })}
     </div>
   )
