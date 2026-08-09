@@ -1017,13 +1017,17 @@ class GraniteClient:
                 feedback = "Your answer doesn't seem directly relevant to the question asked. Please address the question's specific subject matter directly."
                 weak = ["Relevance", "Focus"]
             else:
-                # Base scoring heavily dependent on depth (word count) and CS hits
-                tech_base = 55.0 + (hits * 6.0) + (quality_hits * 5.0)
-                if word_count > 20:
-                    tech_base += 15.0
-                if word_count > 40:
-                    tech_base += 15.0
-                tech = max(50.0, min(100.0, tech_base))
+                # Balanced medium-level grading rubric:
+                # Base is 45.0, hits add +5.0, quality_hits add +4.0.
+                # Answer length (word count) grants moderate progressive steps (+8 each).
+                tech_base = 45.0 + (hits * 5.0) + (quality_hits * 4.0)
+                if word_count > 15:
+                    tech_base += 8.0
+                if word_count > 30:
+                    tech_base += 8.0
+                if word_count > 50:
+                    tech_base += 8.0
+                tech = max(40.0, min(100.0, tech_base))
 
                 comm_base = 60.0 + (word_count * 0.2) + (quality_hits * 3.0)
                 comm = max(50.0, min(95.0, comm_base))
