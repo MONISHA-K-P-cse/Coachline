@@ -463,3 +463,86 @@ export interface BobRecommendationResponse {
 export function getBobRecommendation(): Promise<BobRecommendationResponse> {
   return request('/bob/recommendation')
 }
+
+export interface BobCoachStartResponse {
+  session_id: number
+  next_question: string
+  difficulty: string
+  topic: string
+  reasoning_focus: string
+}
+
+export interface BobCoachRespondResponse {
+  next_question: string
+  difficulty: string
+  topic: string
+  reasoning_focus: string
+  completed: boolean
+}
+
+export interface BobCoachEvaluationDetails {
+  technical_understanding: number
+  problem_solving: number
+  architecture: number
+  tradeoffs: number
+  scalability: number
+  performance: number
+  cost_awareness: number
+  communication: number
+  decision_justification: number
+  overall: number
+}
+
+export interface BobCoachEvaluationResponse {
+  evaluation: BobCoachEvaluationDetails
+  strengths: string[]
+  weaknesses: string[]
+  key_mistakes?: string[]
+  better_approach?: string
+  concepts_to_revise: string[]
+  recommendations: string[]
+}
+
+export interface BobCoachSessionDetails {
+  id: number
+  target_role: string
+  topic: string
+  difficulty: string
+  conversation: { sender: string; text: string }[]
+  evaluation: BobCoachEvaluationResponse | null
+  overall_score: number | null
+  completed: boolean
+  created_at: string
+}
+
+export interface BobCoachHistoryEntry {
+  id: number
+  target_role: string
+  topic: string
+  difficulty: string
+  overall_score: number | null
+  completed: boolean
+  created_at: string
+}
+
+export function startBobCoachScenario(targetRole?: string): Promise<BobCoachStartResponse> {
+  return request('/bob/coach/start', {
+    method: 'POST',
+    body: JSON.stringify({ target_role: targetRole })
+  })
+}
+
+export function respondToBobCoachScenario(sessionId: number, responseText: string): Promise<BobCoachRespondResponse> {
+  return request('/bob/coach/respond', {
+    method: 'POST',
+    body: JSON.stringify({ session_id: sessionId, candidate_response: responseText })
+  })
+}
+
+export function getBobCoachSessionDetails(sessionId: number): Promise<BobCoachSessionDetails> {
+  return request(`/bob/coach/session/${sessionId}`)
+}
+
+export function getBobCoachHistory(): Promise<BobCoachHistoryEntry[]> {
+  return request('/bob/coach/history')
+}

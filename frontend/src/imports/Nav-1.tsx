@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../lib/AuthContext'
-import { Sun, Moon, LogOut, Settings, Briefcase, Map, Video, BookOpen, Compass, MessageSquare, Sparkles } from 'lucide-react'
+import { Sun, Moon, LogOut, Settings, Briefcase, Map, Video, BookOpen, Compass, MessageSquare, Sparkles, Shield } from 'lucide-react'
 
-type Page = 'landing' | 'login' | 'register' | 'onboarding' | 'workspace' | 'roadmap' | 'interview' | 'notes' | 'mastery' | 'mentor'
+type Page = 'landing' | 'login' | 'register' | 'onboarding' | 'workspace' | 'roadmap' | 'interview' | 'notes' | 'mastery' | 'mentor' | 'bob_coach'
 
 interface NavProps {
   page: Page
@@ -16,6 +16,7 @@ const appLinks = [
   { label: 'Notes', page: 'notes' as Page, icon: BookOpen },
   { label: 'Mastery', page: 'mastery' as Page, icon: Compass },
   { label: 'Mentor', page: 'mentor' as Page, icon: MessageSquare },
+  { label: 'IBM Bob', page: 'bob_coach' as Page, icon: Shield },
 ]
 
 const AUTH_PAGES: Page[] = ['login', 'register', 'onboarding']

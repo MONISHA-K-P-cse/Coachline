@@ -6,10 +6,10 @@ import { interviewWebSocketUrl } from '../lib/apiClient'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Video, Mic, MicOff, Volume2, StopCircle, RefreshCw, 
-  ArrowRight, Award, Clock, Star, Flame, CheckCircle, BarChart3, AlertCircle 
+  ArrowRight, Award, Clock, Star, Flame, CheckCircle, BarChart3, AlertCircle, Shield 
 } from 'lucide-react'
 
-type Page = 'landing' | 'login' | 'register' | 'onboarding' | 'workspace' | 'roadmap' | 'interview' | 'notes' | 'mastery' | 'mentor'
+type Page = 'landing' | 'login' | 'register' | 'onboarding' | 'workspace' | 'roadmap' | 'interview' | 'notes' | 'mastery' | 'mentor' | 'bob_coach'
 interface Props { navigate: (p: Page) => void }
 
 type Stage = 'ready' | 'connecting' | 'answering' | 'evaluating' | 'feedback' | 'ended' | 'error'
@@ -843,18 +843,38 @@ export default function Interview({ navigate }: Props) {
               </div>
 
               {/* Weak Topics */}
-              <div className="p-6 rounded-2xl border border-red-500/10 bg-red-500/5 glass-panel">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-red-500 block mb-3">Weak Topics</span>
-                {ended.weak_topics && ended.weak_topics.length > 0 ? (
-                  <ul className="flex flex-wrap gap-2">
-                    {ended.weak_topics.map((t, idx) => (
-                      <li key={idx} className="px-2 py-1 rounded bg-red-500/10 border border-red-500/20 text-[10px] text-red-500 font-semibold">
-                        {t}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <span className="text-xs text-text-muted italic">No weak topics recorded. Outstanding job!</span>
+              <div className="p-6 rounded-2xl border border-red-500/10 bg-red-500/5 glass-panel flex flex-col gap-4">
+                <div>
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-red-500 block mb-3">Weak Topics</span>
+                  {ended.weak_topics && ended.weak_topics.length > 0 ? (
+                    <ul className="flex flex-wrap gap-2">
+                      {ended.weak_topics.map((t, idx) => (
+                        <li key={idx} className="px-2 py-1 rounded bg-red-500/10 border border-red-500/20 text-[10px] text-red-500 font-semibold">
+                          {t}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span className="text-xs text-text-muted italic">No weak topics recorded. Outstanding job!</span>
+                  )}
+                </div>
+
+                {ended.weak_topics && ended.weak_topics.length > 0 && (
+                  <div className="border-t border-red-500/10 pt-4 flex flex-col gap-2 text-left">
+                    <span className="text-[9px] uppercase font-bold text-rust flex items-center gap-1">
+                      <Shield className="w-3.5 h-3.5 animate-pulse" />
+                      AI Coach recommendation
+                    </span>
+                    <p className="text-[11px] text-text-muted leading-relaxed">
+                      Practice real-time engineering trade-offs with IBM Bob to strengthen your {ended.weak_topics[0]} skills.
+                    </p>
+                    <button
+                      onClick={() => navigate('bob_coach')}
+                      className="w-full py-2 bg-rust hover:bg-rust/90 text-white rounded-lg text-[10px] font-bold text-center cursor-pointer transition-colors"
+                    >
+                      Launch Scenario Coach
+                    </button>
+                  </div>
                 )}
               </div>
 

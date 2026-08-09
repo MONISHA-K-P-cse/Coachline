@@ -4,9 +4,9 @@ import { OrbitLoader } from '../components/OrbitLoader'
 import * as api from '../lib/apiClient'
 import { ApiError } from '../lib/apiClient'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Compass, Sparkles, TrendingUp, AlertTriangle, Play, X, RotateCw } from 'lucide-react'
+import { Compass, Sparkles, TrendingUp, AlertTriangle, Play, X, RotateCw, Shield } from 'lucide-react'
 
-type Page = 'landing' | 'login' | 'register' | 'onboarding' | 'workspace' | 'roadmap' | 'interview' | 'notes' | 'mastery' | 'mentor'
+type Page = 'landing' | 'login' | 'register' | 'onboarding' | 'workspace' | 'roadmap' | 'interview' | 'notes' | 'mastery' | 'mentor' | 'bob_coach'
 interface Props { navigate: (p: Page) => void }
 type NodeStatus = 'mastered' | 'learning' | 'needs-practice'
 
@@ -370,16 +370,30 @@ export default function Mastery({ navigate }: Props) {
                 </div>
 
                 {/* Practice Trigger */}
-                <button
-                  onClick={() => {
-                    localStorage.setItem('active_roadmap_topic', selected.label)
-                    navigate('interview')
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-rust hover:bg-rust/90 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer mt-auto"
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>Practice Node</span>
-                </button>
+                <div className="flex flex-col gap-2 mt-auto">
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('active_roadmap_topic', selected.label)
+                      navigate('interview')
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-rust hover:bg-rust/90 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>Practice Node</span>
+                  </button>
+
+                  {['System Design', 'Databases & SQL', 'Concurrency & Threads', 'Network Security'].includes(selected.label) && (
+                    <button
+                      onClick={() => {
+                        navigate('bob_coach')
+                      }}
+                      className="w-full py-2.5 rounded-xl border border-rust/30 bg-rust/5 text-rust font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Shield className="w-3.5 h-3.5" />
+                      <span>Practice Scenario with Bob</span>
+                    </button>
+                  )}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

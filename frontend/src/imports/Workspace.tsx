@@ -515,11 +515,11 @@ export default function Workspace({ navigate }: Props) {
                       💡 {bobRec.reason}
                     </p>
                     <button
-                      onClick={() => setActiveTab('bob')}
+                      onClick={() => navigate('bob_coach')}
                       className="w-full py-2.5 rounded-xl text-white font-semibold text-xs bg-rust hover:bg-rust/90 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Shield className="w-3.5 h-3.5" />
-                      <span>Launch Bob Labs</span>
+                      <span>Launch Scenario Coach</span>
                     </button>
                   </div>
                 ) : (
@@ -528,11 +528,11 @@ export default function Workspace({ navigate }: Props) {
                       Scan your interview performance to load security recommendations.
                     </p>
                     <button
-                      onClick={() => setActiveTab('bob')}
+                      onClick={() => navigate('bob_coach')}
                       className="w-full py-2.5 rounded-xl text-text border border-border bg-bg/40 hover:bg-border/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Shield className="w-3.5 h-3.5" />
-                      <span>Open Auditor</span>
+                      <span>Launch Scenario Coach</span>
                     </button>
                   </div>
                 )}

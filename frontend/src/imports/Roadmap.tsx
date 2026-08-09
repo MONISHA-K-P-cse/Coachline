@@ -279,8 +279,7 @@ export default function Roadmap({ navigate }: Props) {
                             step.title.startsWith("Remedial Practice:") ? (
                               <button
                                 onClick={() => {
-                                  localStorage.setItem('active_workspace_tab', 'bob');
-                                  navigate('workspace');
+                                  navigate('bob_coach');
                                 }}
                                 className="px-4 py-1.5 bg-rust hover:bg-rust/90 text-white rounded-lg text-xs font-bold transition-all shadow-sm shadow-rust/10 cursor-pointer flex items-center gap-1.5"
                               >

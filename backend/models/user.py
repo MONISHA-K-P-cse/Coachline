@@ -21,6 +21,7 @@ class User(Base):
     mastery_scores = relationship("TopicMastery", back_populates="user", cascade="all, delete-orphan")
     mentor_messages = relationship("CareerMentorMessage", back_populates="user", cascade="all, delete-orphan")
     bob_results = relationship("BobChallengeResult", back_populates="user", cascade="all, delete-orphan")
+    bob_coach_sessions = relationship("BobCoachSession", back_populates="user", cascade="all, delete-orphan")
 
 
 class Profile(Base):

@@ -17,6 +17,7 @@ from backend.api import (
     mentor_router,
 )
 from backend.api.bob import router as bob_router
+from backend.api.bob_coach import router as bob_coach_router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -75,6 +76,7 @@ app.include_router(interview_router, prefix=settings.API_V1_STR)
 app.include_router(dashboard_router, prefix=settings.API_V1_STR)
 app.include_router(mentor_router, prefix=settings.API_V1_STR)
 app.include_router(bob_router, prefix=settings.API_V1_STR)
+app.include_router(bob_coach_router, prefix=settings.API_V1_STR)
 
 
 @app.on_event("startup")

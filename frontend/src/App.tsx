@@ -10,10 +10,11 @@ import Interview from './imports/Interview'
 import Notes from './imports/Notes'
 import Mastery from './imports/Mastery'
 import Mentor from './imports/Mentor'
+import BobCoach from './imports/BobCoach'
 
-type Page = 'landing' | 'login' | 'register' | 'onboarding' | 'workspace' | 'roadmap' | 'interview' | 'notes' | 'mastery' | 'mentor'
+type Page = 'landing' | 'login' | 'register' | 'onboarding' | 'workspace' | 'roadmap' | 'interview' | 'notes' | 'mastery' | 'mentor' | 'bob_coach'
 
-const AUTH_REQUIRED_PAGES: Page[] = ['onboarding', 'workspace', 'roadmap', 'interview', 'notes', 'mastery', 'mentor']
+const AUTH_REQUIRED_PAGES: Page[] = ['onboarding', 'workspace', 'roadmap', 'interview', 'notes', 'mastery', 'mentor', 'bob_coach']
 
 function AppShell() {
   const [page, setPage] = useState<Page>('landing')
@@ -42,6 +43,7 @@ function AppShell() {
       {page === 'notes'      && <Notes      navigate={navigate} />}
       {page === 'mastery'    && <Mastery    navigate={navigate} />}
       {page === 'mentor'     && <Mentor     navigate={navigate} />}
+      {page === 'bob_coach'  && <BobCoach  navigate={navigate} />}
     </>
   )
 }
