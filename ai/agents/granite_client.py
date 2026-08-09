@@ -396,7 +396,7 @@ class GraniteClient:
                 "changes_made": changes_made
             })
         # ResumeAgent - analyze_resume
-        elif "resume score" in prompt_lower or "ats resume optimizer" in prompt_lower:
+        elif "resume score" in prompt_lower or "ats resume optimizer" in prompt_lower or "ats resume reviewer" in prompt_lower:
             return """{
               "score": 85,
               "ats_score": 82,
