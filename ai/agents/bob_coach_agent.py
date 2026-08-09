@@ -33,28 +33,26 @@ class BobCoachAgent:
         mastery_summary: str = ""
     ) -> dict:
         """
-        Generates the initial scenario based on candidate context.
+        Generates the initial LeetCode-style coding challenge based on candidate context.
         """
         prompt = f"""You are IBM Bob, a senior engineering scenario coach.
-Your job is NOT to ask normal quiz questions. Instead, give the candidate a realistic, role-specific software engineering scenario where they must make trade-offs, choose architectures, and defend their choices.
+Your job is to present the candidate with a LeetCode-style algorithmic coding challenge matching their target role and experience.
 
 Candidate context:
 - Target Role: {target_role}
 - Experience Level: {experience_level or "Mid-Level"}
-- Resume/Skills: {resume_skills or "N/A"}
-- Focus/Weakness Area: {weakness or "System Design & Architecture"}
-- Topic Mastery Status: {mastery_summary or "N/A"}
+- Focus/Weakness Area: {weakness or "Data Structures & Algorithms"}
 
-Generate a challenging engineering scenario based on this context. 
-If weakness is System Design, prioritize a scaling, database bottleneck, or high-throughput design issue.
-If frontend, prioritize state, rendering performance, or architecture bottlenecks.
+Generate a challenging LeetCode-style coding problem. Give the problem statement, constraints, and ask them to describe their algorithm or write code.
+If backend, focus on system data structures (hash maps, trees, LRU caching, heap queues).
+If frontend, focus on JS/TS logic (deep cloning with circular links, debouncing, custom promise pools, JSON parser).
 
 You must respond ONLY with a JSON object of the following format:
 {{
-  "next_question": "Scenario description and initial question here",
-  "difficulty": "easy",
-  "topic": "system_design",
-  "reasoning_focus": "scalability"
+  "next_question": "Problem description, example inputs/outputs, and constraints here",
+  "difficulty": "medium",
+  "topic": "algorithms",
+  "reasoning_focus": "time_complexity"
 }}
 
 Do not include any conversational filler outside the JSON. Return valid JSON.
@@ -66,17 +64,17 @@ Do not include any conversational filler outside the JSON. Return valid JSON.
         if not parsed or "next_question" not in parsed:
             role_lower = target_role.lower()
             if "frontend" in role_lower:
-                next_q = "Your React dashboard application freezes when rendering large real-time lists with thousands of items. What optimization strategies would you use?"
-                topic = "Frontend Architecture"
-                focus = "performance"
+                next_q = "Challenge: Write a custom deep clone function in JavaScript that handles circular references, Dates, and RegEx objects.\n\nInput: An object with potential self-referential cycles.\nOutput: A deep copy of the object.\n\nDescribe your approach or write code."
+                topic = "JS Algorithms"
+                focus = "recursive_cycles"
             elif "data" in role_lower or "ai" in role_lower or "ml" in role_lower:
-                next_q = "Your real-time ML recommendation model has high accuracy but 800ms latency in production. How would you optimize its inference speed and serving infrastructure?"
-                topic = "ML System Design"
-                focus = "latency"
+                next_q = "Challenge: Write an algorithm to compute the Cosine Similarity between two sparse high-dimensional text vector arrays efficiently in O(N + M) time.\n\nInput: Two sparse dictionary vector arrays.\nOutput: The float cosine similarity metric.\n\nDescribe your approach or write code."
+                topic = "Sparse Vector Math"
+                focus = "vector_alignment"
             else:
-                next_q = "Your backend API is growing from 1,000 to 100,000 requests/minute. The primary SQL database is experiencing heavy read bottlenecks. How would you scale the database layer?"
-                topic = "System Design"
-                focus = "scalability"
+                next_q = "Challenge: Design a Least Recently Used (LRU) Cache supporting get(key) and put(key, value) operations both in O(1) time complexity.\n\nConstraints: The cache is initialized with a fixed capacity.\n\nDescribe your approach or write code."
+                topic = "Data Structures"
+                focus = "cache_eviction"
                 
             parsed = {
                 "next_question": next_q,
@@ -94,8 +92,8 @@ Do not include any conversational filler outside the JSON. Return valid JSON.
         difficulty: str
     ) -> dict:
         """
-        Processes a turn. Bob challenges the candidate's technical choices (plays Devil's Advocate)
-        and introduces constraints/adjusts difficulty based on answer quality.
+        Processes a turn. Bob challenges the candidate's algorithmic choices (plays Devil's Advocate),
+        focusing on Big-O complexity, edge cases, and optimizations.
         """
         history_formatted = ""
         for turn in conversation_history:
@@ -103,8 +101,8 @@ Do not include any conversational filler outside the JSON. Return valid JSON.
             history_formatted += f"{sender}: {turn['text']}\n"
 
         prompt = f"""You are IBM Bob, a senior engineering scenario coach.
-You are in the middle of a dynamic technical conversation with a candidate for a {target_role} position.
-Your purpose is to play DEVIL'S ADVOCATE: challenge their decisions, ask WHY they chose that technology, point out drawbacks of their choices (e.g. latency vs cost, SQL vs NoSQL, microservices complexity), and introduce new constraints.
+You are in the middle of a LeetCode technical round with a candidate for a {target_role} position.
+Your purpose is to play DEVIL'S ADVOCATE: challenge their algorithmic decisions, ask them about edge cases (null inputs, duplicate entries, buffer overflow), ask for the exact Time and Space complexities, and push them to optimize their code.
 
 Conversation History so far:
 {history_formatted}
@@ -113,16 +111,16 @@ Candidate's latest response:
 "{candidate_response}"
 
 Evaluate the candidate's latest response:
-- If their reasoning is strong, increase the difficulty, introduce a new database or infrastructure constraint, and dig deeper.
-- If their reasoning is weak, ask a simpler follow-up to check their understanding of fundamental concepts.
+- If their code/algorithm is optimal, introduce a scale or memory constraint (e.g. stream data too large for RAM) to push them further.
+- If their code/algorithm is suboptimal (e.g. O(N^2)), ask them how to optimize it to O(N) or O(N log N) using better data structures.
 
-Provide the next conversational response. Do not give an overall evaluation score yet.
+Provide the next conversational challenge. Do not give an overall evaluation score yet.
 You must respond ONLY with a JSON object of the following format:
 {{
-  "next_question": "Your follow-up question / challenge playing Devil's Advocate",
+  "next_question": "Your follow-up challenge/questions on complexities and edge cases",
   "difficulty": "medium",
-  "topic": "system_design",
-  "reasoning_focus": "tradeoffs"
+  "topic": "algorithms",
+  "reasoning_focus": "edge_cases"
 }}
 
 Do not write anything else. Return valid JSON.
@@ -135,19 +133,19 @@ Do not write anything else. Return valid JSON.
             
             # Simple progressive questions acting as Devil's Advocate
             if candidate_turns <= 1:
-                next_q = "Why would you choose that specific caching/scaling pattern, and what consistency trade-offs does it introduce?"
-                focus = "tradeoffs"
+                next_q = "What is the exact Big-O Time and Space complexity of your proposed solution? Can we optimize the space complexity to O(1) auxiliary space?"
+                focus = "complexity"
             elif candidate_turns == 2:
-                next_q = "What happens if that server crashes or the connection pool fills up? What failover mechanism would you design?"
-                focus = "fault_tolerance"
+                next_q = "How does your algorithm handle boundary edge cases, such as empty inputs, duplicates, or negative limits? What guards would you write?"
+                focus = "edge_cases"
             else:
-                next_q = "Understood. How would you justify the operational complexity and infrastructure cost of this setup compared to a simpler monolith?"
-                focus = "cost_awareness"
+                next_q = "Good. If the input size exceeds memory bounds (e.g. data streamed from a disk file), how would you rewrite this algorithm to work in chunks?"
+                focus = "scale_limits"
                 
             parsed = {
                 "next_question": next_q,
                 "difficulty": difficulty,
-                "topic": "System Design",
+                "topic": "Algorithms",
                 "reasoning_focus": focus
             }
         return parsed
@@ -158,7 +156,7 @@ Do not write anything else. Return valid JSON.
         target_role: str
     ) -> dict:
         """
-        Performs the final structured AI evaluation of the candidate's engineering reasoning.
+        Performs the final structured AI evaluation of the candidate's algorithmic reasoning.
         """
         history_formatted = ""
         for turn in conversation_history:
@@ -166,18 +164,18 @@ Do not write anything else. Return valid JSON.
             history_formatted += f"{sender}: {turn['text']}\n"
 
         prompt = f"""You are IBM Bob, senior engineering scenario coach.
-Analyze this technical scenario conversation with a candidate applying for a {target_role} role.
+Analyze this LeetCode algorithmic round with a candidate applying for a {target_role} role.
 Rate the candidate's performance from 0 to 100 on the following attributes:
-- technical_understanding: Knowledge of core CS/Engineering concepts.
-- problem_solving: Logical approach to bottlenecks.
-- architecture: Core system architecture selection.
-- tradeoffs: Recognition of pros/cons (e.g., speed vs cost).
-- scalability: Awareness of scaling limits.
-- performance: Latency/throughput optimization.
-- cost_awareness: Understanding of infrastructure cost.
-- communication: Clarity and structure.
-- decision_justification: Defending technical choices.
-- overall: Overall reasoning score.
+- technical_understanding: Knowledge of target data structures.
+- problem_solving: Pattern recognition (e.g. double pointers, slide window).
+- architecture: Choice of collections (hash maps, lists, heaps).
+- tradeoffs: Recognition of speed vs space complexities.
+- scalability: Handling extreme input bounds.
+- performance: Code execution optimizations.
+- cost_awareness: Stack recursion overhead vs iterative memory costs.
+- communication: Walkthrough explanations.
+- decision_justification: Defending complexity estimates.
+- overall: Overall algorithmic score.
 
 Provide lists of strengths, weaknesses, key mistakes, a better approach, concepts to revise, and next recommended practice.
 
@@ -201,7 +199,7 @@ You must respond ONLY with a JSON object of the following format:
   "strengths": ["list of strengths"],
   "weaknesses": ["list of weaknesses"],
   "key_mistakes": ["key mistakes made during the chat"],
-  "better_approach": "Summary of a better architecture or technical path here",
+  "better_approach": "Summary of the optimal O(N) time or O(1) space code solution here",
   "concepts_to_revise": ["topics to brush up on"],
   "recommendations": ["specific recommended practice actions"]
 }}
@@ -214,22 +212,22 @@ Do not write anything else. Return valid JSON.
             # Fallback mock evaluation if JSON extraction fails
             parsed = {
                 "evaluation": {
-                    "technical_understanding": 70,
-                    "problem_solving": 75,
-                    "architecture": 68,
-                    "tradeoffs": 65,
-                    "scalability": 70,
-                    "performance": 72,
-                    "cost_awareness": 60,
+                    "technical_understanding": 75,
+                    "problem_solving": 78,
+                    "architecture": 72,
+                    "tradeoffs": 70,
+                    "scalability": 68,
+                    "performance": 74,
+                    "cost_awareness": 70,
                     "communication": 80,
-                    "decision_justification": 70,
-                    "overall": 70
+                    "decision_justification": 75,
+                    "overall": 75
                 },
-                "strengths": ["Logical communication", "Understands database indexing principles"],
-                "weaknesses": ["Vague on cache invalidation strategies", "Struggled under high-throughput constraints"],
-                "key_mistakes": ["Did not account for cache stale-data race conditions"],
-                "better_approach": "Introduce redis caching alongside database replica pooling",
-                "concepts_to_revise": ["Cache invalidation write-through vs write-behind", "Load balancing hashing algorithms"],
-                "recommendations": ["Practice scenario: DB replication setup", "Study microservices distributed transactions"]
+                "strengths": ["Clear explanation of heap algorithms", "Identified O(1) lookup hash map optimization"],
+                "weaknesses": ["Missed cycle checks in recursive steps", "Unclear on stack growth limits"],
+                "key_mistakes": ["Did not write safety boundary check for null bounds"],
+                "better_approach": "Combine a doubly-linked list with a hash map to achieve O(1) cache access and update time complexities.",
+                "concepts_to_revise": ["Hash map hash collision strategies", "Recursive stack limits"],
+                "recommendations": ["Solve: LRU Cache implementation on Coachline", "Solve: circular reference clone validation"]
             }
         return parsed
