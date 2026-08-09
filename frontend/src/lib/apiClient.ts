@@ -199,6 +199,9 @@ export interface RoadmapStep {
   title: string
   description: string
   estimated_hours: number
+  syllabus?: string[]
+  questions?: string[]
+  notes?: string
   status: string
 }
 
@@ -211,6 +214,14 @@ export interface RoadmapResponse {
   created_at: string
 }
 
+export interface PracticeQuestionEvalResponse {
+  score: number
+  feedback: string
+  passed: boolean
+  generated_new_question: string | null
+  step_questions: string[]
+}
+
 export function generateRoadmap(target_role: string, title?: string): Promise<RoadmapResponse> {
   return request('/roadmap/generate', { method: 'POST', body: JSON.stringify({ target_role, title }) }, AGENT_TIMEOUT_MS)
 }
@@ -218,6 +229,19 @@ export function generateRoadmap(target_role: string, title?: string): Promise<Ro
 export function listRoadmaps(): Promise<RoadmapResponse[]> {
   return request('/roadmap/')
 }
+
+export function evaluatePracticeQuestion(
+  roadmapId: number,
+  stepNumber: number,
+  question: string,
+  userAnswer: string
+): Promise<PracticeQuestionEvalResponse> {
+  return request(`/roadmap/${roadmapId}/steps/${stepNumber}/evaluate-question`, {
+    method: 'POST',
+    body: JSON.stringify({ question, user_answer: userAnswer })
+  }, AGENT_TIMEOUT_MS)
+}
+
 
 // ─── Notes ───────────────────────────────────────────────────────────────────
 

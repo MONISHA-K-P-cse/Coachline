@@ -70,6 +70,40 @@ def test_dashboard_aggregation(token: str):
     assert data["target_company"] == "Stripe"
     assert "recommendations" in data
 
+def test_roadmap_practice_questions_and_remediation(token: str):
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # 1. Generate roadmap
+    gen_res = client.post("/api/roadmap/generate", json={"target_role": "Backend Lead"}, headers=headers)
+    assert gen_res.status_code == 200, gen_res.text
+    roadmap = gen_res.json()
+    assert "steps_json" in roadmap
+    steps = roadmap["steps_json"]
+    assert len(steps) > 0
+
+    # Verify every step has a syllabus and at least 5 practice questions
+    for step in steps:
+        assert "syllabus" in step and len(step["syllabus"]) > 0
+        assert "questions" in step and len(step["questions"]) >= 5
+
+    # 2. Evaluate a practice question with an incomplete/poor answer (scoring < 50%)
+    step1_q1 = steps[0]["questions"][0]
+    eval_payload = {
+        "question": step1_q1,
+        "user_answer": "idk"
+    }
+    eval_res = client.post(
+        f"/api/roadmap/{roadmap['id']}/steps/1/evaluate-question",
+        json=eval_payload,
+        headers=headers
+    )
+    assert eval_res.status_code == 200, eval_res.text
+    eval_data = eval_res.json()
+    assert eval_data["score"] < 50.0
+    assert eval_data["passed"] is False
+    assert eval_data["generated_new_question"] is not None
+    assert len(eval_data["step_questions"]) > len(steps[0]["questions"])
+
 if __name__ == "__main__":
     test_health_check()
     print("Health check passed.")
@@ -81,4 +115,7 @@ if __name__ == "__main__":
     print("Career Mentor Chat passed.")
     test_dashboard_aggregation(token)
     print("Dashboard Aggregation with Recommendations passed.")
+    test_roadmap_practice_questions_and_remediation(token)
+    print("Roadmap 5+ Practice Questions & Adaptive Question Generation (<50% score) passed.")
     print("\nALL ARCHITECTURE VERIFICATION TESTS PASSED SUCCESSFULLY!")
+

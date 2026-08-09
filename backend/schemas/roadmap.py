@@ -38,6 +38,9 @@ class RoadmapStep(BaseModel):
     title: str
     description: str
     estimated_hours: int
+    syllabus: List[str] = []
+    questions: List[str] = []
+    notes: Optional[str] = ""
     status: str = "pending"
 
 class RoadmapResponse(BaseModel):
@@ -50,3 +53,15 @@ class RoadmapResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PracticeQuestionEvalRequest(BaseModel):
+    question: str
+    user_answer: str
+
+class PracticeQuestionEvalResponse(BaseModel):
+    score: float
+    feedback: str
+    passed: bool
+    generated_new_question: Optional[str] = None
+    step_questions: List[str]
+

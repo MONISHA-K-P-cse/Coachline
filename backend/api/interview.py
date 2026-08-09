@@ -77,6 +77,7 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
     turn_number = 1
     experience_level = ""
     candidate_background = ""
+    week_syllabus: list = []  # syllabus subtopics from the active roadmap week
 
     try:
         while True:
@@ -88,6 +89,7 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                 role = data.get("role", "Backend Engineer")
                 week = data.get("week", 1)
                 topic = data.get("topic", "")
+                week_syllabus = data.get("syllabus") or []
                 profile = db.query(Profile).filter(Profile.user_id == user_id).first()
                 experience_level = profile.experience_level if profile and profile.experience_level else ""
                 candidate_background = _candidate_background(db, user_id)
@@ -112,12 +114,12 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                 try:
                     opening = await run_in_threadpool(
                         interview_agent.generate_question,
-                        role, 0, experience_level, candidate_background, True, week, topic
+                        role, 0, experience_level, candidate_background, True, week, topic, week_syllabus
                     )
                     initial_q = opening["question"]
                 except Exception as exc:
                     logger.warning("Interview agent opening question failed (%s); using placeholder question.", exc)
-                    initial_q = f"Welcome to your {role} mock interview! To begin, please introduce yourself and your relevant experience for this role."
+                    initial_q = f"Welcome to your {role} mock interview for Week {week}: {topic or role}! To begin, please introduce yourself and your experience relevant to this week's topics."
 
                 qa = QuestionAnswer(
                     session_id=session.id,
@@ -162,7 +164,7 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                     eval_result, next_q = await run_in_threadpool(
                         interview_agent.evaluate_and_generate_next,
                         session.role, question_text, user_answer, experience_level, candidate_background,
-                        session.week, session.topic
+                        session.week, session.topic, week_syllabus
                     )
                 except Exception as exc:
                     logger.warning(
@@ -187,7 +189,7 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                             next_q = await run_in_threadpool(
                                 interview_agent.generate_question,
                                 session.role, fallback_score, experience_level, candidate_background, False,
-                                session.week, session.topic
+                                session.week, session.topic, week_syllabus
                             )
                     except Exception as exc2:
                         logger.warning("Interview agent question generation failed (%s); using placeholder question.", exc2)

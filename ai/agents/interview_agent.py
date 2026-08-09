@@ -46,6 +46,7 @@ class InterviewAgent:
         is_opening_question: bool = False,
         week: int = 1,
         topic: str = "",
+        syllabus: list = None,
     ):
         context = "\n\n".join(
             retrieve(role, k=3)
@@ -60,44 +61,40 @@ class InterviewAgent:
         difficulty = _DIFFICULTY_NAMES[combined_rank]
 
         opening_instructions = (
-            """This is the FIRST question of the interview. Open with a brief,
-warm one-sentence welcome that names the role, then ask the candidate to
-introduce themselves and their relevant experience - but frame that
-introduction prompt around the role and (if given) the candidate's actual
-background below, not a generic unrelated topic like REST APIs or database
-design unless that genuinely IS the role's subject matter."""
+            f"""This is the FIRST question of the interview for Week {week}: {topic or role}.
+Open with a brief warm one-sentence welcome that mentions the week topic, then ask the candidate
+to introduce themselves and their experience specifically related to this week's topics."""
             if is_opening_question
-            else "Generate ONE interview question that follows on from the interview so far."
+            else f"Generate ONE interview question that follows on from the interview so far. It MUST be about one of the Week {week} syllabus topics listed above."
         )
+
+        bg_part = f"Candidate Background (from their resume):\n{candidate_background}" if candidate_background else ""
+        exp_part = f"Candidate Experience Level: {experience_level}" if experience_level else ""
+        syllabus_part = (
+            f"""Week {week} Syllabus Subtopics (MANDATORY - your question MUST be specifically about one of these):
+""" + "\n".join(f"  - {s}" for s in syllabus)
+        ) if syllabus else f"Week {week} Topic: {topic or role}"
 
         prompt = f"""
 You are an expert technical interviewer.
 
 Role:
 {role}
-{f"Candidate Experience Level: {experience_level}" if experience_level else ""}
-{f"Candidate Background (from their resume):\n{candidate_background}" if candidate_background else ""}
-Week:
-{week}
-Topic:
-{topic}
+{exp_part}
+{bg_part}
+
+{syllabus_part}
 
 Difficulty:
 {difficulty}
 
-Reference Material (may be about an unrelated subject area - ONLY use it if
-it genuinely matches the Role above; otherwise ignore it completely and
-rely on your own knowledge of the Role instead):
+Reference Material (only use if directly relevant to the syllabus topics above):
 {context}
 
 Calibrate the question's depth and phrasing to the candidate's experience
-level above (if given) as well as the target difficulty: a Beginner-tier
-question for an entry-level candidate should ask about a single core
-concept in plain terms, while a Hard-tier question for a senior candidate
-should probe trade-offs, scale, or failure modes. The question's SUBJECT
-MATTER must be genuinely specific to the Role above - do not default to
-generic CS topics (REST APIs, databases, operating systems, memory
-management, etc.) unless the role above is actually about that subject.
+level above (if given) as well as the target difficulty. The question MUST
+be directly about one of the syllabus subtopics listed above - do not ask
+about unrelated CS topics.
 
 {opening_instructions}
 
@@ -174,6 +171,7 @@ Do NOT use JSON.
         candidate_background: str = "",
         week: int = 1,
         topic: str = "",
+        syllabus: list = None,
     ):
         """
         Scores the candidate's answer AND produces the next question in a
@@ -185,21 +183,23 @@ Do NOT use JSON.
         """
         context = "\n\n".join(retrieve(role, k=3))
 
-        prompt = f"""
-You are an expert technical interviewer conducting a live mock interview.
+        bg_part = f"Candidate Background (from their resume):\n{candidate_background}" if candidate_background else ""
+        exp_part = f"Candidate Experience Level: {experience_level}" if experience_level else ""
+        syllabus_part = (
+            f"""Week {week} Syllabus Subtopics (the next_question MUST cover one of these):
+""" + "\n".join(f"  - {s}" for s in syllabus)
+        ) if syllabus else f"Week {week} Topic: {topic or role}"
+
+        prompt = f"""You are an expert technical interviewer conducting a mock interview for the following candidate profile:
 
 Role:
 {role}
-{f"Candidate Experience Level: {experience_level}" if experience_level else ""}
-{f"Candidate Background (from their resume):\n{candidate_background}" if candidate_background else ""}
-Week:
-{week}
-Topic:
-{topic}
+{exp_part}
+{bg_part}
 
-Reference Material (may be about an unrelated subject area - ONLY use it if
-it genuinely matches the Role above; otherwise ignore it completely and
-rely on your own knowledge of the Role instead):
+{syllabus_part}
+
+Reference Material (only use if directly relevant to the syllabus topics above):
 {context}
 
 The candidate was just asked:
@@ -239,10 +239,8 @@ Rules for "next_question" and "mode":
   and challenge them to defend or refine it. It must reference specifics
   from their real answer, not a generic follow-up.
 - Otherwise, set "mode" to "standard" and make "next_question" a genuinely
-  new question. Its SUBJECT MATTER must be specific to the Role above (do
-  not default to generic CS topics like REST APIs, databases, operating
-  systems, or memory management unless the role above is actually about
-  that subject). Calibrate its difficulty to the candidate's experience
+  new question. Its SUBJECT MATTER must be about one of the Week Syllabus
+  Subtopics listed above. Calibrate its difficulty to the candidate's experience
   level (if given) blended with the overall_score you just gave this
   answer: entry-level or a low score should get an easier, single-concept
   question; senior-level or a high score should get a harder question

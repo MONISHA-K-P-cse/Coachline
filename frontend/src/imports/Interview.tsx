@@ -39,7 +39,12 @@ export default function Interview({ navigate }: Props) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [slowWait, setSlowWait] = useState(false)
   const [unlockedNextWeek, setUnlockedNextWeek] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [secondsSpent, setSecondsSpent] = useState(0)
+  const [lastAnswerDuration, setLastAnswerDuration] = useState<number | null>(null)
   const [practiceWeek, setPracticeWeek] = useState<number | null>(null)
+  const [practiceSyllabus, setPracticeSyllabus] = useState<string[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const waitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -71,10 +76,6 @@ export default function Interview({ navigate }: Props) {
     }, ms)
   }
 
-  const [isSpeaking, setIsSpeaking] = useState(false)
-  const [isRecording, setIsRecording] = useState(false)
-  const [secondsSpent, setSecondsSpent] = useState(0)
-  const [lastAnswerDuration, setLastAnswerDuration] = useState<number | null>(null)
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recognitionRef = useRef<any>(null)
 
@@ -214,8 +215,11 @@ export default function Interview({ navigate }: Props) {
 
     const savedWeek = localStorage.getItem('active_roadmap_week')
     const savedTopic = localStorage.getItem('active_roadmap_topic')
+    const savedSyllabus = localStorage.getItem('active_roadmap_syllabus')
     const weekVal = savedWeek ? parseInt(savedWeek) : 1
+    const syllabusVal: string[] = savedSyllabus ? JSON.parse(savedSyllabus) : []
     setPracticeWeek(weekVal)
+    setPracticeSyllabus(syllabusVal)
 
     setStage('connecting')
     armWaitTimer(15000, "Timed out establishing secure connection to IBM interview agent.")
@@ -230,10 +234,12 @@ export default function Interview({ navigate }: Props) {
         event: 'start',
         role,
         week: weekVal,
-        topic: savedTopic || undefined
+        topic: savedTopic || undefined,
+        syllabus: syllabusVal.length > 0 ? syllabusVal : undefined
       }))
       localStorage.removeItem('active_roadmap_week')
       localStorage.removeItem('active_roadmap_topic')
+      localStorage.removeItem('active_roadmap_syllabus')
       armWaitTimer(15000, 'The interview server accepted the connection but never sent a question. Please try again.')
     }
 
@@ -389,9 +395,24 @@ export default function Interview({ navigate }: Props) {
           <div className="p-8 rounded-2xl border border-border bg-card-bg/60 glass-panel flex flex-col md:flex-row items-center gap-8">
             <div className="flex-1">
               <h2 className="font-display text-xl font-bold text-text">Initialize mock environment</h2>
-              <p className="text-xs text-text-muted mt-2 leading-relaxed">
-                Configure your target role. CoachLine will run agent loops designed with customizable parameters for company standards.
-              </p>
+              {practiceSyllabus.length > 0 ? (
+                <div className="mt-3 p-3.5 rounded-xl bg-rust/5 border border-rust/20">
+                  <span className="text-[9px] uppercase font-bold tracking-wider text-rust block mb-2">📖 This Week's Interview Topics</span>
+                  <ul className="flex flex-col gap-1">
+                    {practiceSyllabus.map((s, i) => (
+                      <li key={i} className="text-xs text-text flex items-start gap-2">
+                        <span className="text-rust font-bold shrink-0">{i + 1}.</span>
+                        <span>{s}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-[10px] text-text-muted mt-2 italic">All interview questions will be grounded in these syllabus topics.</p>
+                </div>
+              ) : (
+                <p className="text-xs text-text-muted mt-2 leading-relaxed">
+                  Configure your target role. CoachLine will run agent loops designed with customizable parameters for company standards.
+                </p>
+              )}
               
               <div className="mt-6 w-full max-w-sm">
                 <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">Role Target</label>
@@ -449,6 +470,16 @@ export default function Interview({ navigate }: Props) {
         {/* ── STAGE: ANSWERING / EVALUATING ───────────────────────────────── */}
         {(stage === 'answering' || stage === 'evaluating') && (
           <div className="flex flex-col gap-6">
+
+            {/* Syllabus context strip */}
+            {practiceSyllabus.length > 0 && (
+              <div className="p-3 rounded-xl bg-rust/5 border border-rust/20 flex flex-wrap gap-2 items-center">
+                <span className="text-[9px] uppercase font-bold text-rust tracking-wider shrink-0">📖 This Week's Topics:</span>
+                {practiceSyllabus.map((s, i) => (
+                  <span key={i} className="text-[10px] font-semibold text-text bg-bg/60 border border-border/60 px-2 py-0.5 rounded-full">{s}</span>
+                ))}
+              </div>
+            )}
             
             {/* Split layout: Avatar & Question Details */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
