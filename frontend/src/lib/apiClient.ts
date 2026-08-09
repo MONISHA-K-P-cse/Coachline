@@ -162,6 +162,26 @@ export function improveResume(resumeId: number): Promise<ResumeImprovementRespon
   return request(`/resume/${resumeId}/improve`, { method: 'POST' })
 }
 
+export interface JobDescriptionResponse {
+  id: number
+  target_role: string
+  company_name?: string
+  skill_gaps?: { category: string; missing_skills: string[]; priority: string }[]
+  uploaded_at: string
+}
+
+export function uploadJobDescription(
+  target_role: string,
+  company_name: string,
+  jd_text: string
+): Promise<JobDescriptionResponse> {
+  return request('/job-description/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ target_role, company_name, jd_text })
+  })
+}
+
 export async function downloadImprovedPDF(text: string, filename: string): Promise<void> {
   const url = `${API_BASE_URL}/resume/generate-pdf`
   const headers: Record<string, string> = {
