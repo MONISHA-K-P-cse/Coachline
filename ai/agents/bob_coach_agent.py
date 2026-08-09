@@ -64,11 +64,25 @@ Do not include any conversational filler outside the JSON. Return valid JSON.
         
         # Fallback if AI fails or returns empty
         if not parsed or "next_question" not in parsed:
+            role_lower = target_role.lower()
+            if "frontend" in role_lower:
+                next_q = "Your React dashboard application freezes when rendering large real-time lists with thousands of items. What optimization strategies would you use?"
+                topic = "Frontend Architecture"
+                focus = "performance"
+            elif "data" in role_lower or "ai" in role_lower or "ml" in role_lower:
+                next_q = "Your real-time ML recommendation model has high accuracy but 800ms latency in production. How would you optimize its inference speed and serving infrastructure?"
+                topic = "ML System Design"
+                focus = "latency"
+            else:
+                next_q = "Your backend API is growing from 1,000 to 100,000 requests/minute. The primary SQL database is experiencing heavy read bottlenecks. How would you scale the database layer?"
+                topic = "System Design"
+                focus = "scalability"
+                
             parsed = {
-                "next_question": f"You are designing a system for {target_role}. As traffic grows, the main database experiences a heavy read bottleneck. How would you solve this?",
+                "next_question": next_q,
                 "difficulty": "medium",
-                "topic": "System Design",
-                "reasoning_focus": "databases"
+                "topic": topic,
+                "reasoning_focus": focus
             }
         return parsed
 
@@ -116,11 +130,25 @@ Do not write anything else. Return valid JSON.
         response = self.client.generate(prompt)
         parsed = self._extract_json(response)
         if not parsed or "next_question" not in parsed:
+            # Dynamically count how many turns candidate has made
+            candidate_turns = sum(1 for t in conversation_history if t["sender"] == "candidate")
+            
+            # Simple progressive questions acting as Devil's Advocate
+            if candidate_turns <= 1:
+                next_q = "Why would you choose that specific caching/scaling pattern, and what consistency trade-offs does it introduce?"
+                focus = "tradeoffs"
+            elif candidate_turns == 2:
+                next_q = "What happens if that server crashes or the connection pool fills up? What failover mechanism would you design?"
+                focus = "fault_tolerance"
+            else:
+                next_q = "Understood. How would you justify the operational complexity and infrastructure cost of this setup compared to a simpler monolith?"
+                focus = "cost_awareness"
+                
             parsed = {
-                "next_question": "Can you explain the trade-offs of that choice, particularly regarding consistency versus availability?",
+                "next_question": next_q,
                 "difficulty": difficulty,
                 "topic": "System Design",
-                "reasoning_focus": "tradeoffs"
+                "reasoning_focus": focus
             }
         return parsed
 
