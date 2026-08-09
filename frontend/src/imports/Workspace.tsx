@@ -523,7 +523,7 @@ export default function Workspace({ navigate }: Props) {
                     <div className="flex bg-panel-bg p-0.5 rounded-lg border border-border/80">
                       {[
                         { id: 'scores', label: 'Detailed Summary' },
-                        { id: 'network', label: 'Constellation Map' }
+                        { id: 'network', label: 'Keyword Insights' }
                       ].map((view) => (
                         <button
                           key={view.id}
@@ -610,11 +610,58 @@ export default function Workspace({ navigate }: Props) {
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-bg/40 rounded-xl border border-border/50 p-4">
-                    <ResumeSkillNetwork
-                      strengths={latestResume.score_details?.strengths ?? []}
-                      improvements={latestResume.score_details?.improvements ?? []}
-                    />
+                  <div className="flex flex-col gap-6">
+                    {/* Header Summary */}
+                    <div className="bg-rust/5 border border-rust/10 p-4 rounded-xl">
+                      <span className="text-[10px] uppercase font-bold text-rust tracking-wider block mb-1">
+                        🎯 ATS Matching Insights
+                      </span>
+                      <p className="text-xs text-text-muted leading-relaxed">
+                        We scanned your resume against the target role requirements. Below is a detailed view of detected skills present in your profile versus critical missing keywords.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Detected Skills Cloud */}
+                      <div className="bg-panel-bg p-5 rounded-xl border border-border/40">
+                        <h4 className="text-[10px] font-bold tracking-wider uppercase text-accent mb-3 flex items-center gap-1.5">
+                          🟢 Detected Skills & Keywords
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {(latestResume.score_details?.strengths ?? []).map((s, idx) => (
+                            <span 
+                              key={idx} 
+                              className="px-2.5 py-1 bg-accent/10 border border-accent/20 text-accent text-[11px] font-medium rounded-lg shadow-sm shadow-accent/5 hover:scale-105 transition-transform"
+                            >
+                              {s}
+                            </span>
+                          ))}
+                          {(!latestResume.score_details?.strengths || latestResume.score_details.strengths.length === 0) && (
+                            <span className="text-xs text-text-muted italic">No keywords detected yet.</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Missing Keywords Cloud */}
+                      <div className="bg-panel-bg p-5 rounded-xl border border-border/40">
+                        <h4 className="text-[10px] font-bold tracking-wider uppercase text-rust mb-3 flex items-center gap-1.5">
+                          🔴 Missing / Suggested Keywords
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {(latestResume.score_details?.improvements ?? []).map((s, idx) => (
+                            <span 
+                              key={idx} 
+                              className="px-2.5 py-1 bg-rust/10 border border-rust/20 text-rust text-[11px] font-medium rounded-lg shadow-sm shadow-rust/5 hover:scale-105 transition-transform"
+                            >
+                              {s}
+                            </span>
+                          ))}
+                          {(!latestResume.score_details?.improvements || latestResume.score_details.improvements.length === 0) && (
+                            <span className="text-xs text-text-muted italic">All target keywords matched!</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
