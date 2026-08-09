@@ -22,6 +22,7 @@ from backend.schemas.roadmap import (
 from ai.agents.roadmap_agent import RoadmapAgent
 from ai.agents.eval_agent import EvaluationAgent
 from sqlalchemy.orm.attributes import flag_modified
+from backend.core.mastery import update_topic_mastery
 
 router = APIRouter(prefix="/roadmap", tags=["Roadmap & Notes Storage"])
 logger = logging.getLogger("roadmap")
@@ -211,6 +212,32 @@ async def evaluate_practice_question(
     score = float(eval_result.get("overall_score", 0.0))
     feedback = str(eval_result.get("feedback", ""))
     passed = score >= 50.0
+
+    # Update topic mastery score dynamically for the milestone topic
+    topic = target_step.get("title", f"Week {step_number}")
+    score_delta = score - 70.0
+    try:
+        await run_in_threadpool(
+            update_topic_mastery, db, user_id=current_user.id, topic=topic, score_delta=score_delta
+        )
+    except Exception as exc:
+        logger.warning(
+            "update_topic_mastery failed for practice topic '%s' (%s); continuing without it.",
+            topic, exc,
+        )
+
+    # Also update any other weak topics returned by the evaluation agent if present
+    weak_topics = eval_result.get("weak_topics", [])
+    for w_topic in weak_topics:
+        try:
+            await run_in_threadpool(
+                update_topic_mastery, db, user_id=current_user.id, topic=w_topic, score_delta=score_delta
+            )
+        except Exception as exc:
+            logger.warning(
+                "update_topic_mastery failed for weak practice topic '%s' (%s); continuing without it.",
+                w_topic, exc,
+            )
 
     generated_new_question = None
 

@@ -272,6 +272,19 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                             topic, exc,
                         )
 
+                # Update mastery for the main interview topic
+                if session and session.topic:
+                    score_delta = score - 70.0
+                    try:
+                        await run_in_threadpool(
+                            update_topic_mastery, db, user_id=user_id, topic=session.topic, score_delta=score_delta
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "update_topic_mastery failed for main session topic '%s' (%s); continuing without it.",
+                            session.topic, exc,
+                        )
+
             elif event == "end":
                 if session:
                     session.status = "completed"
