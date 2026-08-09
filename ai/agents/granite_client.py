@@ -401,6 +401,7 @@ class GraniteClient:
               "score": 85,
               "ats_score": 82,
               "summary": "The candidate has strong software engineering foundations with hands-on experience building APIs and database systems.",
+              "resume_feedback": "The overall resume layout is professional and covers core programming concepts well, but lacks quantified metrics on past project impacts.",
               "strengths": [
                 "Proficient with Python/FastAPI and database integration",
                 "Solid understanding of software testing and modular architecture"
