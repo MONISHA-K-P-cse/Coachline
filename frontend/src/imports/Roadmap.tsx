@@ -260,9 +260,11 @@ export default function Roadmap({ navigate }: Props) {
                           <span className={`text-[9px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full ${
                             isLocked 
                               ? 'bg-border/60 text-text-muted' 
-                              : 'bg-rust/10 text-rust'
+                              : step.title.startsWith("Remedial Practice:")
+                                ? 'bg-rust/20 text-rust border border-rust/30 animate-pulse'
+                                : 'bg-rust/10 text-rust'
                           }`}>
-                            Week {step.step_number}
+                            {step.title.startsWith("Remedial Practice:") ? 'AI Remedial Lab' : `Week ${step.step_number}`}
                           </span>
                           <h3 className="font-display text-base font-bold text-text mt-1.5">{step.title}</h3>
                         </div>
@@ -274,19 +276,32 @@ export default function Roadmap({ navigate }: Props) {
                             <span>{step.estimated_hours}h</span>
                           </div>
                           {!isLocked && (
-                            <button
-                              onClick={() => {
-                                localStorage.setItem('active_roadmap_week', step.step_number.toString())
-                                localStorage.setItem('active_roadmap_topic', step.title)
-                                // Store this week's syllabus so the interview agent can ground questions in these subtopics
-                                localStorage.setItem('active_roadmap_syllabus', JSON.stringify(syllabusItems))
-                                navigate('interview')
-                              }}
-                              className="px-4 py-1.5 bg-rust hover:bg-rust/90 text-white rounded-lg text-xs font-bold transition-all shadow-sm shadow-rust/10 cursor-pointer flex items-center gap-1"
-                            >
-                              <Play className="w-3 h-3 fill-current" />
-                              <span>Live Interview</span>
-                            </button>
+                            step.title.startsWith("Remedial Practice:") ? (
+                              <button
+                                onClick={() => {
+                                  localStorage.setItem('active_workspace_tab', 'bob');
+                                  navigate('workspace');
+                                }}
+                                className="px-4 py-1.5 bg-rust hover:bg-rust/90 text-white rounded-lg text-xs font-bold transition-all shadow-sm shadow-rust/10 cursor-pointer flex items-center gap-1.5"
+                              >
+                                <Play className="w-3 h-3 fill-current" />
+                                <span>Launch Bob Lab</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  localStorage.setItem('active_roadmap_week', step.step_number.toString())
+                                  localStorage.setItem('active_roadmap_topic', step.title)
+                                  // Store this week's syllabus so the interview agent can ground questions in these subtopics
+                                  localStorage.setItem('active_roadmap_syllabus', JSON.stringify(syllabusItems))
+                                  navigate('interview')
+                                }}
+                                className="px-4 py-1.5 bg-rust hover:bg-rust/90 text-white rounded-lg text-xs font-bold transition-all shadow-sm shadow-rust/10 cursor-pointer flex items-center gap-1"
+                              >
+                                <Play className="w-3 h-3 fill-current" />
+                                <span>Live Interview</span>
+                              </button>
+                            )
                           )}
                         </div>
                       </div>

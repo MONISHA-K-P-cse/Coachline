@@ -125,7 +125,7 @@ export default function Workspace({ navigate }: Props) {
   const { user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'resume' | 'bob'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'resume' | 'bob'>(() => (localStorage.getItem('active_workspace_tab') as any) || 'dashboard')
   const [dashboard, setDashboard] = useState<api.DashboardSummary | null>(null)
   const [resumes, setResumes] = useState<api.ResumeResponse[]>([])
   const [sessions, setSessions] = useState<api.InterviewSession[]>([])
@@ -133,6 +133,10 @@ export default function Workspace({ navigate }: Props) {
   const [loading, setLoading] = useState(true)
   const [analyzing, setAnalyzing] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+
+  useEffect(() => {
+    localStorage.removeItem('active_workspace_tab')
+  }, [])
 
 
   const [improving, setImproving] = useState(false)
@@ -491,6 +495,47 @@ export default function Workspace({ navigate }: Props) {
                     <p className="text-xs text-text-muted italic">Complete mock loops to scan weak competencies.</p>
                   )}
                 </div>
+              </div>
+
+              {/* IBM Bob Dashboard Integration Card */}
+              <div className="p-6 rounded-2xl border border-rust/15 bg-card-bg/60 glass-panel flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold tracking-wider uppercase text-text-muted">IBM Bob Coach</span>
+                  <span className="text-[9px] uppercase tracking-wider text-rust bg-rust/10 px-2 py-0.5 rounded-full font-bold">
+                    Active
+                  </span>
+                </div>
+                
+                {bobRec ? (
+                  <div className="flex flex-col gap-3">
+                    <h3 className="font-display text-sm font-bold text-text leading-snug">
+                      Bob recommends: {bobRec.topic} Practice
+                    </h3>
+                    <p className="text-xs text-text-muted leading-relaxed">
+                      💡 {bobRec.reason}
+                    </p>
+                    <button
+                      onClick={() => setActiveTab('bob')}
+                      className="w-full py-2.5 rounded-xl text-white font-semibold text-xs bg-rust hover:bg-rust/90 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Shield className="w-3.5 h-3.5" />
+                      <span>Launch Bob Labs</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-xs text-text-muted italic">
+                      Scan your interview performance to load security recommendations.
+                    </p>
+                    <button
+                      onClick={() => setActiveTab('bob')}
+                      className="w-full py-2.5 rounded-xl text-text border border-border bg-bg/40 hover:bg-border/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Shield className="w-3.5 h-3.5" />
+                      <span>Open Auditor</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Quick Navigation Links */}
