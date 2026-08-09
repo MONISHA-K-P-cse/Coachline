@@ -28,9 +28,10 @@ export default function BobCoach({ navigate }: Props) {
   const loadHistory = useCallback(async () => {
     try {
       const data = await api.getBobCoachHistory()
-      setHistory(data)
+      setHistory(data || [])
     } catch (err) {
       console.error(err)
+      setHistory([])
     }
   }, [])
 
@@ -111,8 +112,8 @@ export default function BobCoach({ navigate }: Props) {
     )
   }
 
-  const candidateTurns = activeSession
-    ? activeSession.conversation.filter(c => c.sender === 'candidate').length
+  const candidateTurns = activeSession && activeSession.conversation
+    ? (activeSession.conversation || []).filter(c => c.sender === 'candidate').length
     : 0
 
   return (
@@ -279,7 +280,7 @@ export default function BobCoach({ navigate }: Props) {
 
                 {/* Dialog Messages list */}
                 <div className="flex-1 overflow-y-auto flex flex-col gap-4 pr-2 [scrollbar-width:thin]">
-                  {activeSession.conversation.map((msg, idx) => {
+                  {(activeSession.conversation || []).map((msg, idx) => {
                     const isBob = msg.sender === 'bob'
                     return (
                       <div 
@@ -386,7 +387,7 @@ export default function BobCoach({ navigate }: Props) {
                   <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel flex flex-col gap-4">
                     <span className="text-[10px] font-bold tracking-wider uppercase text-text-muted">Skill Metrics</span>
                     <div className="flex flex-col gap-3">
-                      {Object.entries(activeSession.evaluation.evaluation).map(([attr, score]) => {
+                      {activeSession.evaluation?.evaluation && Object.entries(activeSession.evaluation.evaluation).map(([attr, score]) => {
                         if (attr === 'overall') return null
                         return (
                           <div key={attr} className="text-left">
@@ -408,7 +409,7 @@ export default function BobCoach({ navigate }: Props) {
                     <div>
                       <span className="text-[10px] font-bold tracking-wider uppercase text-text-muted block">Strengths</span>
                       <ul className="list-disc list-inside text-xs text-text-muted mt-2 flex flex-col gap-1">
-                        {activeSession.evaluation.strengths.map((s, idx) => (
+                        {(activeSession.evaluation?.strengths || []).map((s, idx) => (
                           <li key={idx}>{s}</li>
                         ))}
                       </ul>
@@ -417,7 +418,7 @@ export default function BobCoach({ navigate }: Props) {
                     <div className="border-t border-border/40 pt-4">
                       <span className="text-[10px] font-bold tracking-wider uppercase text-text-muted block">Weaknesses</span>
                       <ul className="list-disc list-inside text-xs text-text-muted mt-2 flex flex-col gap-1">
-                        {activeSession.evaluation.weaknesses.map((w, idx) => (
+                        {(activeSession.evaluation?.weaknesses || []).map((w, idx) => (
                           <li key={idx}>{w}</li>
                         ))}
                       </ul>
@@ -426,7 +427,7 @@ export default function BobCoach({ navigate }: Props) {
 
                   {/* Recommendations */}
                   <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel flex flex-col gap-4 text-left">
-                    {activeSession.evaluation.better_approach && (
+                    {activeSession.evaluation?.better_approach && (
                       <div>
                         <span className="text-[10px] font-bold tracking-wider uppercase text-text-muted block">Better Approach</span>
                         <p className="text-xs text-text mt-1.5 leading-relaxed font-semibold">
@@ -438,7 +439,7 @@ export default function BobCoach({ navigate }: Props) {
                     <div className="border-t border-border/40 pt-4">
                       <span className="text-[10px] font-bold tracking-wider uppercase text-text-muted block">Concepts to Revise</span>
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        {activeSession.evaluation.concepts_to_revise.map((c, idx) => (
+                        {(activeSession.evaluation?.concepts_to_revise || []).map((c, idx) => (
                           <span 
                             key={idx}
                             onClick={() => {
