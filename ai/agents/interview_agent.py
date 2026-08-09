@@ -33,6 +33,128 @@ def _score_rank(previous_score: float) -> int:
     return 0
 
 
+def get_syllabus_questions(role: str, week: int) -> list:
+    w = max(1, min(8, week))
+    role_lower = role.lower()
+    
+    syllabus_backend = [
+        ["What is the difference between PUT and PATCH, and when would you use each?",
+         "How would you design a robust API pagination strategy for a high-volume endpoint?",
+         "What are idempotency keys, and how do they ensure safe request retries in payment APIs?"],
+        ["Explain the difference between a clustered and non-clustered index, and how they impact write operations.",
+         "How do database replica lags occur in primary-replica setups, and how do you handle read-after-write consistency?",
+         "Under what conditions is database sharding preferred over vertical scaling and replication?"],
+        ["What is cache stampede (thundering herd) and how do you mitigate it using mutual exclusion or background warming?",
+         "Compare the Cache-Aside, Write-Through, and Write-Back caching strategies.",
+         "How does Redis handle eviction when memory is full, and what is the difference between volatile-lru and allkeys-lru?"],
+        ["What is the difference between a process and a thread, and how does the GIL affect concurrency in Python?",
+         "How do you identify and resolve thread deadlocks in high-concurrency systems?",
+         "Explain the event loop model in asynchronous frameworks compared to multi-threaded worker pools."],
+        ["How does Kafka guarantee message ordering within a topic, and what happens when a consumer group rebalances?",
+         "What is the difference between at-least-once, at-most-once, and exactly-once delivery guarantees?",
+         "How do you handle consumer backpressure when message ingress rates exceed processing capabilities?"],
+        ["What is the Saga pattern, and how does it maintain data consistency compared to two-phase commits (2PC)?",
+         "How does a circuit breaker prevent cascading failures in a microservices mesh?",
+         "Compare service discovery models: client-side discovery vs server-side discovery."],
+        ["Why should you use multi-stage Docker builds, and how do they impact image footprint security?",
+         "What is the difference between a Kubernetes Pod, ReplicaSet, and Deployment?",
+         "How do Kubernetes readiness probes differ from liveness probes, and why are they critical during rollouts?"],
+        ["How would you design a distributed token-bucket rate limiter that scales across multiple servers?",
+         "What is the difference between active-passive and active-active failover strategies?",
+         "How do you monitor key metrics like latency, throughput, error rates, and saturation (Golden Signals)?"]
+    ]
+
+    syllabus_frontend = [
+        ["What is a closure in JavaScript, and how can it lead to memory leaks?",
+         "How does the JavaScript event loop handle call stack, microtask queue, and macrotask queue priorities?",
+         "Explain TypeScript utility types like Omit, Pick, and Exclude, and how they ensure type safety."],
+        ["What is React Fiber, and how does it enable concurrent rendering and interruptible updates?",
+         "How do you prevent unnecessary re-renders in deep React component trees?",
+         "Compare React state hooks (useState, useReducer) with ref hooks (useRef) in terms of rendering triggers."],
+        ["What are Core Web Vitals (LCP, FID, CLS, INP), and how do you optimize them?",
+         "How does dynamic import() enable code splitting, and how do you implement route-level lazy loading?",
+         "How do resource hints like prefetch, preload, and preconnect optimize the critical rendering path."],
+        ["Compare the data flow models of Redux vs Zustand vs Recoil in state architectures.",
+         "What is prop drilling, and how does React Context API solve it? What are Context's performance trade-offs?",
+         "How do you synchronize local state changes with server database states (e.g. using React Query / SWR)?"],
+        ["How does a Service Worker enable offline capabilities and background sync in Progressive Web Apps?",
+         "Explain cross-site scripting (XSS) and cross-site request forgery (CSRF), and how modern frontends defend against them.",
+         "What is Content Security Policy (CSP), and how do nonce tokens secure inline scripts?"],
+        ["Compare CSS Flexbox (1D) vs CSS Grid (2D), and when is each layout model preferred?",
+         "How do CSS container queries differ from traditional viewport-based media queries?",
+         "What are the pros and cons of utility-first CSS frameworks like Tailwind compared to CSS Modules?"],
+        ["What is the difference between unit testing, component testing, and end-to-end (E2E) testing?",
+         "How do you mock API calls in component tests using tools like Mock Service Worker (MSW)?",
+         "What are the key stages of a frontend deployment pipeline (linting, build verification, asset hosting)?"],
+        ["Compare Server-Side Rendering (SSR), Static Site Generation (SSG), and Client-Side Rendering (CSR).",
+         "How do React Server Components (RSC) differ from standard client components, and how do they reduce bundle sizes?",
+         "What is progressive hydration, and how does it optimize Time to Interactive (TTI)?"]
+    ]
+
+    syllabus_ds = [
+        ["How do you handle collinear features in linear regression models?",
+         "Explain the difference between L1 (Lasso) and L2 (Ridge) regularization.",
+         "What is the target leakage in ML pipelines, and how do you prevent it?"],
+        ["Why is the ROC-AUC score preferred over classification accuracy for imbalanced datasets?",
+         "How does a Random Forest model determine feature importances?",
+         "What are the differences between K-Means and DBSCAN clustering algorithms?"],
+        ["What is the vanishing gradient problem, and how do activation functions like ReLU mitigate it?",
+         "Explain the role of Dropout layers during training vs inference.",
+         "What is the difference between SGD, Adam, and RMSprop optimizers?"],
+        ["Explain the self-attention mechanism in Transformer architectures.",
+         "What is the difference between fine-tuning a model and utilizing RAG templates?",
+         "How do temperature and top-p sampling impact text generation output randomness?"],
+        ["How do you structure a high-throughput inference API for ML models using FastAPI?",
+         "What is model drift, and how do you monitor performance changes in production?",
+         "Under what scenarios would you choose batch prediction over real-time API inference?"],
+        ["How does PySpark manage data partitioning and shuffle operations during joins?",
+         "Explain the difference between ETL and ELT pipelines, and when to use Snowflake vs Redshift.",
+         "How do you handle schema evolution in streaming data lakes?"],
+        ["How do you determine the required sample size for an A/B test based on statistical power?",
+         "What is the p-value, and what does it mean to achieve a 95% confidence interval?",
+         "How do you identify and control for skew and bias in user assignment metrics?"],
+        ["What are the core components of an MLOps pipeline, and how does model registry versioning work?",
+         "How do you detect feature drift in a model's inputs over time?",
+         "What is continuous training (CT) and when should it be automated?"]
+    ]
+
+    syllabus_default = [
+        ["What is the difference between quicksort and mergesort in terms of time and space complexity?",
+         "Explain how dynamic programming optimization differs from memoization techniques.",
+         "What is a pointer, and how does garbage collection manage reference counts in modern runtimes?"],
+        ["How do hash map collisions occur, and how do separate chaining and open addressing resolve them?",
+         "What is the difference between depth-first search (DFS) and breadth-first search (BFS) on graphs?",
+         "What is a binary search tree, and how do you balance a tree in-place?"],
+        ["Explain the Single Responsibility Principle and the Dependency Inversion Principle.",
+         "What is the Singleton pattern, and how do you implement a thread-safe singleton?",
+         "Compare the Strategy design pattern with the State design pattern."],
+        ["What is the difference between vertical scaling and horizontal scaling?",
+         "How does a DNS query resolution loop execute from client to root server?",
+         "What is the role of a reverse proxy vs a load balancer?"],
+        ["What are ACID transactions, and what is the role of Write-Ahead Logging (WAL)?",
+         "Explain the difference between Read Committed and Serializable transaction isolation levels.",
+         "Under what scenarios is a NoSQL document database preferred over a normalized relational database?"],
+        ["How does a TCP 3-way handshake establish a connection, and how does TLS handshake secure it?",
+         "Explain how WebSockets enable full-duplex communication over a single TCP connection.",
+         "What is HTTP/2 multiplexing, and how does it optimize page asset loading?"],
+        ["Compare Git merge vs Git rebase workflows, and when to use each.",
+         "How do you design a secure, automated CI/CD pipeline that enforces testing gates?",
+         "What is Git cherry-pick, and under what conditions is it used?"],
+        ["What is the difference between symmetric and asymmetric encryption, and how are they used in SSL/TLS?",
+         "Explain the OAuth2 authorization code grant flow with PKCE.",
+         "How does a token-bucket rate limiter enforce traffic bounds on APIs?"]
+    ]
+
+    if "backend" in role_lower:
+        return syllabus_backend[w - 1]
+    elif "frontend" in role_lower or "ui" in role_lower or "react" in role_lower:
+        return syllabus_frontend[w - 1]
+    elif "data scientist" in role_lower or "machine learning" in role_lower or "ds" in role_lower or "ml" in role_lower:
+        return syllabus_ds[w - 1]
+    else:
+        return syllabus_default[w - 1]
+
+
 class InterviewAgent:
     def __init__(self):
         self.client = GraniteClient()
@@ -108,10 +230,17 @@ Do NOT use JSON.
 
         response = self.client.generate(prompt)
 
+        # Override response to return only standard questions from the weekly syllabus
+        q_list = get_syllabus_questions(role, week)
+        if is_opening_question:
+            q_text = f"Welcome to your mock interview! Let's start with the Week {week} topic: {topic or 'Technical Foundations'}. Could you introduce yourself briefly and explain how you would tackle this question: {q_list[0]}"
+        else:
+            q_text = q_list[0]
+
         return {
             "role": role,
             "difficulty": difficulty,
-            "question": response,
+            "question": q_text,
             "previous_score": previous_score,
             "mode": "standard",
         }
@@ -269,6 +398,19 @@ Rules for "next_question" and "mode":
         mode = data.get("mode") if data.get("mode") in ("standard", "devils_advocate") else (
             "devils_advocate" if result["overall_score"] >= DEVILS_ADVOCATE_SCORE_THRESHOLD else "standard"
         )
+
+        # Override standard next questions to strictly follow the weekly syllabus sequence
+        if mode == "standard":
+            q_list = get_syllabus_questions(role, week)
+            current_q_lower = question.lower()
+            if q_list[0].lower() in current_q_lower:
+                next_question = q_list[1]
+            elif q_list[1].lower() in current_q_lower:
+                next_question = q_list[2]
+            elif q_list[2].lower() in current_q_lower:
+                next_question = "Thank you! We have completed all the questions for this week's syllabus. I will now compile your overall performance score."
+            else:
+                next_question = q_list[0]
 
         return result, {
             "role": role,

@@ -315,6 +315,19 @@ async def generate_pdf_endpoint(req: PDFGenerationRequest):
         spaceAfter=8
     )
 
+    bullet_style = ParagraphStyle(
+        name='BulletStyle',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9,
+        leading=13.5,
+        textColor='#374151',
+        leftIndent=12,
+        firstLineIndent=-12,
+        spaceBefore=2,
+        spaceAfter=2
+    )
+
     story = []
     lines = req.text.split('\n')
     
@@ -489,12 +502,12 @@ async def generate_pdf_endpoint(req: PDFGenerationRequest):
         if not sec["items"]:
             continue
         story.append(Paragraph(sec["name"].upper(), heading_style))
-        story.append(Spacer(1, 3))
+        story.append(Spacer(1, 8))
 
         if sec["type"] == "skills":
             formatted_skills = " &nbsp;&nbsp;&bull;&nbsp;&nbsp; ".join([f"<font color='#D97706'>{s}</font>" for s in sec["items"]])
             story.append(Paragraph(formatted_skills, skills_style))
-            story.append(Spacer(1, 4))
+            story.append(Spacer(1, 10))
         elif sec["type"] == "timeline":
             for entry in sec["items"]:
                 if isinstance(entry, dict):
@@ -502,32 +515,40 @@ async def generate_pdf_endpoint(req: PDFGenerationRequest):
                     if entry['location']:
                         col1_text += f"<br/><font color='#6B7280'>{entry['location']}</font>"
                     col2_text = "<font color='#D97706'>&#9679;</font>"
-                    col3_text = ""
+                    
+                    # Col 3 flowables list
+                    col3_flowables = []
+                    title_company_html = ""
                     if entry['title']:
-                        col3_text += f"<b>{entry['title']}</b>"
+                        title_company_html += f"<b>{entry['title']}</b>"
                     if entry['company']:
-                        if col3_text:
-                            col3_text += "<br/>"
-                        col3_text += f"<font color='#D97706'><b>{entry['company']}</b></font>"
+                        if title_company_html:
+                            title_company_html += "<br/>"
+                        title_company_html += f"<font color='#D97706'><b>{entry['company']}</b></font>"
+                    
+                    if title_company_html:
+                        col3_flowables.append(Paragraph(title_company_html, role_style))
+                        col3_flowables.append(Spacer(1, 2))
+                    
                     for b in entry['bullets']:
-                        col3_text += f"<br/>&nbsp;&nbsp;<font color='#6B7280'>&#9679;</font>&nbsp;&nbsp;{markdown_to_html(b)}"
+                        bullet_html = f"<font color='#D97706'>&#9679;</font>&nbsp;&nbsp;{markdown_to_html(b)}"
+                        col3_flowables.append(Paragraph(bullet_html, bullet_style))
                     
                     p1 = Paragraph(col1_text, date_style)
                     p2 = Paragraph(col2_text, dot_style)
-                    p3 = Paragraph(col3_text, body_style)
                     
-                    t = Table([[p1, p2, p3]], colWidths=[110, 20, 370])
+                    t = Table([[p1, p2, col3_flowables]], colWidths=[110, 20, 370])
                     t.setStyle(TableStyle([
                         ('VALIGN', (0,0), (-1,-1), 'TOP'),
                         ('LEFTPADDING', (0,0), (-1,-1), 0),
                         ('RIGHTPADDING', (0,0), (-1,-1), 0),
-                        ('TOPPADDING', (0,0), (-1,-1), 4),
-                        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+                        ('TOPPADDING', (0,0), (-1,-1), 6),
+                        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
                     ]))
                     story.append(t)
                 else:
                     story.append(Paragraph(markdown_to_html(entry), body_style))
-            story.append(Spacer(1, 4))
+            story.append(Spacer(1, 10))
         elif sec["type"] == "grid":
             grid_data = []
             row = []
@@ -549,11 +570,11 @@ async def generate_pdf_endpoint(req: PDFGenerationRequest):
                 ('VALIGN', (0,0), (-1,-1), 'TOP'),
                 ('LEFTPADDING', (0,0), (-1,-1), 0),
                 ('RIGHTPADDING', (0,0), (-1,-1), 10),
-                ('TOPPADDING', (0,0), (-1,-1), 5),
-                ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+                ('TOPPADDING', (0,0), (-1,-1), 6),
+                ('BOTTOMPADDING', (0,0), (-1,-1), 6),
             ]))
             story.append(t)
-            story.append(Spacer(1, 4))
+            story.append(Spacer(1, 10))
         else:
             for txt in sec["items"]:
                 if txt.startswith(('-', '*', '•')):
@@ -562,7 +583,9 @@ async def generate_pdf_endpoint(req: PDFGenerationRequest):
                     story.append(Paragraph(formatted_text, body_style))
                 else:
                     story.append(Paragraph(markdown_to_html(txt), body_style))
-            story.append(Spacer(1, 4))
+            story.append(Spacer(1, 10))
+            
+        story.append(Spacer(1, 14))
 
     doc.build(story)
     buffer.seek(0)
