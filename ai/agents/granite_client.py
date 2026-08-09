@@ -941,16 +941,23 @@ class GraniteClient:
 
             q_clean = q.lower()
             ans_clean = ans.lower()
-
-            # Define topic-specific keywords
+            
+            # Define topic-specific keywords covering all core competencies
             topic_keywords = {
-                "database": ["index", "query", "sql", "nosql", "postgres", "mongodb", "acid", "transaction", "scale", "normalization"],
+                "database": ["index", "query", "sql", "nosql", "postgres", "mongodb", "acid", "transaction", "scale", "normalization", "join", "schema", "dbms"],
                 "index": ["b-tree", "hash", "scan", "lookup", "composite", "primary", "secondary", "write", "read"],
                 "cache": ["redis", "memcached", "eviction", "ttl", "hit", "miss", "consistency", "invalidation", "stampede"],
                 "api": ["rest", "fastapi", "http", "endpoint", "status", "json", "request", "response", "latency", "grpc"],
-                "python": ["gil", "async", "await", "thread", "process", "memory", "decorator", "generator", "yield"],
-                "concurrency": ["thread", "lock", "asyncio", "semaphore", "race", "deadlock", "process", "safety"],
-                "microservice": ["service", "communication", "grpc", "event", "kafka", "queue", "discovery", "latency"]
+                "python": ["gil", "async", "await", "thread", "process", "memory", "decorator", "generator", "yield", "list", "dict", "tuple"],
+                "java": ["jvm", "garbage", "collection", "multithreading", "oop", "interface", "class", "inheritance", "polymorphism", "encapsulation"],
+                "concurrency": ["thread", "lock", "asyncio", "semaphore", "race", "deadlock", "process", "safety", "mutex", "synchronized"],
+                "microservice": ["service", "communication", "grpc", "event", "kafka", "queue", "discovery", "latency"],
+                "dsa": ["array", "list", "stack", "queue", "tree", "graph", "heap", "hash", "binary", "search", "sort", "complexity", "time", "space", "lifo", "fifo"],
+                "oop": ["class", "object", "inheritance", "polymorphism", "encapsulation", "abstraction", "method", "override", "overload"],
+                "os": ["process", "thread", "scheduling", "deadlock", "memory", "paging", "virtual", "kernel", "syscall"],
+                "cn": ["tcp", "udp", "ip", "http", "dns", "routing", "socket", "packet", "handshake", "layer"],
+                "ml": ["model", "feature", "training", "supervised", "unsupervised", "regression", "classification", "neural", "network", "gradient", "loss"],
+                "system design": ["scaling", "load", "balancer", "sharding", "replication", "availability", "partition", "latency", "throughput"]
             }
 
             # Gather keywords based on topics in the question
@@ -959,10 +966,19 @@ class GraniteClient:
                 if topic in q_clean:
                     matched_keywords.extend(keywords)
 
+            # Fallback to general CS keywords if question has no specific keywords mapped
+            if not matched_keywords:
+                matched_keywords = [
+                    "class", "object", "array", "list", "tree", "graph", "hash", "query", "sql", "index", 
+                    "process", "thread", "memory", "tcp", "ip", "http", "model", "data", "scale", "load",
+                    "cache", "redis", "complexity", "time", "space", "o(n)", "constant", "linear",
+                    "algorithm", "function", "variable", "pointer", "reference"
+                ]
+
             general_quality_terms = [
                 "trade-off", "performance", "scalability", "latency", "throughput", "redundancy",
                 "bottleneck", "optimization", "monitoring", "metric", "consistency", "reliability",
-                "robust", "security", "thread-safe"
+                "robust", "security", "thread-safe", "principle", "implementation"
             ]
 
             hits = 0
@@ -980,7 +996,9 @@ class GraniteClient:
 
             is_relevant = True
             if matched_keywords and hits == 0 and not any(w in ans_clean for w in ["hello", "hi", "introduce", "myself", "experience"]):
-                is_relevant = False
+                # Allow soft matches or general comments
+                if word_count < 10:
+                    is_relevant = False
 
             if word_count < 3:
                 tech = 30.0
@@ -999,8 +1017,13 @@ class GraniteClient:
                 feedback = "Your answer doesn't seem directly relevant to the question asked. Please address the question's specific subject matter directly."
                 weak = ["Relevance", "Focus"]
             else:
-                tech_base = 50.0 + (hits * 8.0) + (quality_hits * 5.0)
-                tech = max(45.0, min(95.0, tech_base))
+                # Base scoring heavily dependent on depth (word count) and CS hits
+                tech_base = 55.0 + (hits * 6.0) + (quality_hits * 5.0)
+                if word_count > 20:
+                    tech_base += 15.0
+                if word_count > 40:
+                    tech_base += 15.0
+                tech = max(50.0, min(100.0, tech_base))
 
                 comm_base = 60.0 + (word_count * 0.2) + (quality_hits * 3.0)
                 comm = max(50.0, min(95.0, comm_base))
