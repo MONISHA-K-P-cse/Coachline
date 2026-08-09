@@ -525,10 +525,10 @@ export interface BobCoachHistoryEntry {
   created_at: string
 }
 
-export function startBobCoachScenario(targetRole?: string): Promise<BobCoachStartResponse> {
+export function startBobCoachScenario(targetRole?: string, language?: string): Promise<BobCoachStartResponse> {
   return request('/bob/coach/start', {
     method: 'POST',
-    body: JSON.stringify({ target_role: targetRole })
+    body: JSON.stringify({ target_role: targetRole, language: language })
   })
 }
 

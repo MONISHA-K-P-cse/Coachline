@@ -22,8 +22,8 @@ from ai.agents.bob_coach_agent import BobCoachAgent
 router = APIRouter(prefix="/bob/coach", tags=["IBM Bob Scenario Coach"])
 bob_coach_agent = BobCoachAgent()
 
-# Limit the dialogue to 4 candidate turns (8 turns total including Bob's questions)
-MAX_CANDIDATE_TURNS = 3
+# Limit the dialogue to 5 candidate turns (10 turns total including Bob's questions)
+MAX_CANDIDATE_TURNS = 5
 
 @router.post("/start", response_model=BobCoachStartResponse)
 async def start_scenario(
@@ -53,13 +53,15 @@ async def start_scenario(
         scores = [f"{m.topic}: {int(m.mastery_score)}%" for m in current_user.mastery_scores]
         mastery_summary = ", ".join(scores)
 
+    language = request.language or "Python"
     # Start Scenario via Granite
     result = bob_coach_agent.start_scenario(
         target_role=target_role,
         experience_level=experience_level,
         resume_skills=resume_skills,
         weakness=weakness,
-        mastery_summary=mastery_summary
+        mastery_summary=mastery_summary,
+        language=language
     )
 
     next_q = result.get("next_question", "")
@@ -71,7 +73,7 @@ async def start_scenario(
     session = BobCoachSession(
         user_id=current_user.id,
         target_role=target_role,
-        topic=topic,
+        topic=f"{topic} ({language})",
         difficulty=difficulty,
         conversation_json=[{"sender": "bob", "text": next_q}],
         completed=False
@@ -117,6 +119,11 @@ async def respond_to_scenario(
     # Count how many turns the candidate has taken
     candidate_turns_count = sum(1 for t in conversation if t["sender"] == "candidate")
 
+    # Extract language from topic (e.g. "Algorithms (Python)" -> "Python")
+    language = "Python"
+    if "(" in session.topic and ")" in session.topic:
+        language = session.topic.split("(")[-1].split(")")[0]
+
     if candidate_turns_count >= MAX_CANDIDATE_TURNS:
         # Trigger Evaluation
         session.completed = True
@@ -139,42 +146,44 @@ async def respond_to_scenario(
         if "frontend" in session.target_role.lower():
             topic_name = "System Design"  # or specific UI topic
         
-        mastery = db.query(TopicMastery).filter(
+        topic_mastery = db.query(TopicMastery).filter(
             TopicMastery.user_id == current_user.id,
             TopicMastery.topic == topic_name
         ).first()
-        if not mastery:
-            mastery = TopicMastery(
+
+        if not topic_mastery:
+            topic_mastery = TopicMastery(
                 user_id=current_user.id,
                 topic=topic_name,
                 mastery_score=float(overall_score)
             )
-            db.add(mastery)
+            db.add(topic_mastery)
         else:
-            mastery.mastery_score = float(overall_score)
-
-        # 2. Update user's learning roadmap to inject practice step if score < 85
+            topic_mastery.mastery_score = float(overall_score)
+        
+        # 2. Add remedial step in roadmap if score under 85%
         if overall_score < 85:
-            roadmap = db.query(Roadmap).filter(Roadmap.user_id == current_user.id).first()
+            roadmap = db.query(Roadmap).filter(
+                Roadmap.user_id == current_user.id
+            ).first()
             if roadmap:
-                steps_data = roadmap.steps_json or {}
-                if "steps" in steps_data:
-                    step_title = f"Remedial Practice: {topic_name} (Bob Challenge)"
-                    exists = any(s.get("title") == step_title for s in steps_data["steps"])
-                    if not exists:
-                        new_step_num = len(steps_data["steps"]) + 1
-                        new_step = {
-                            "step_number": new_step_num,
-                            "title": step_title,
-                            "description": f"Targeted hands-on system architectural practice based on Bob Scenario score of {overall_score}/100.",
-                            "estimated_hours": 6,
-                            "status": "pending"
-                        }
-                        steps_data["steps"].append(new_step)
-                        roadmap.steps_json = steps_data
-                        flag_modified(roadmap, "steps_json")
-
+                steps = list(roadmap.steps_json)
+                # Check if steps already has a Bob Practice step to avoid duplicates
+                already_exists = any("Bob Challenge" in s.get("title", "") for s in steps)
+                if not already_exists:
+                    new_step = {
+                        "step_number": len(steps) + 1,
+                        "title": f"Remedial Practice: {topic_name} (Bob Challenge)",
+                        "description": f"Targeted hands-on system architectural practice based on Bob Scenario score of {overall_score}/100.",
+                        "estimated_hours": 6,
+                        "status": "pending"
+                    }
+                    steps.append(new_step)
+                    roadmap.steps_json = steps
+                    flag_modified(roadmap, "steps_json")
+        
         db.commit()
+
         return {
             "next_question": "Scenario finished! Click to view your detailed technical evaluation.",
             "difficulty": session.difficulty,
@@ -188,7 +197,8 @@ async def respond_to_scenario(
             conversation_history=conversation,
             candidate_response=request.candidate_response,
             target_role=session.target_role,
-            difficulty=session.difficulty
+            difficulty=session.difficulty,
+            language=language
         )
 
         next_q = result.get("next_question", "")

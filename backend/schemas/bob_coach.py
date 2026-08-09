@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Optional
 
 class BobCoachStartRequest(BaseModel):
     target_role: Optional[str] = None
+    language: Optional[str] = "Python"
 
 class BobCoachRespondRequest(BaseModel):
     session_id: int

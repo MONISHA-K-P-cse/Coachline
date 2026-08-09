@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 
 type Page = 'landing' | 'login' | 'register' | 'onboarding' | 'workspace' | 'roadmap' | 'interview' | 'notes' | 'mastery' | 'mentor' | 'bob_coach'
-const MAX_CANDIDATE_TURNS = 3
+const MAX_CANDIDATE_TURNS = 5
 interface Props { navigate: (p: Page) => void }
 
 export default function BobCoach({ navigate }: Props) {
@@ -23,6 +23,7 @@ export default function BobCoach({ navigate }: Props) {
   const [error, setError] = useState<string | null>(null)
   
   // Scenario state
+  const [selectedLanguage, setSelectedLanguage] = useState('Python')
   const [responseText, setResponseText] = useState('')
   const chatEndRef = useRef<HTMLDivElement>(null)
 
@@ -44,13 +45,14 @@ export default function BobCoach({ navigate }: Props) {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [activeSession?.conversation])
 
-  const handleStart = async (roleOverride?: string) => {
+  const handleStart = async (roleOverride?: string, languageOverride?: string) => {
     setStarting(true)
     setError(null)
     setActiveSession(null)
     try {
       const targetRole = roleOverride || user?.profile?.target_role || "Software Engineer"
-      const res = await api.startBobCoachScenario(targetRole)
+      const lang = languageOverride || selectedLanguage
+      const res = await api.startBobCoachScenario(targetRole, lang)
       // Immediately fetch session details to load standard conversation structure
       const details = await api.getBobCoachSessionDetails(res.session_id)
       setActiveSession(details)
@@ -169,6 +171,28 @@ export default function BobCoach({ navigate }: Props) {
                 <p className="text-xs text-text-muted leading-relaxed mb-6">
                   IBM Bob will read your mock interview performance, weaknesses, and profile target role. It will generate a system-wide engineering challenge custom-built for your profile.
                 </p>
+
+                <div className="mb-6 text-left">
+                  <label className="text-[10px] font-bold tracking-wider uppercase text-text-muted block mb-2.5">
+                    Select Coding Language
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {["Python", "JavaScript", "Java", "C++", "Go"].map((lang) => (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() => setSelectedLanguage(lang)}
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                          selectedLanguage === lang
+                            ? 'bg-rust border-rust text-white shadow-sm shadow-rust/10'
+                            : 'border-border/60 bg-bg/40 text-text-muted hover:text-text hover:border-rust/40'
+                        }`}
+                      >
+                        {lang}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 <div className="flex flex-col sm:flex-row items-center gap-4">
                   <button
