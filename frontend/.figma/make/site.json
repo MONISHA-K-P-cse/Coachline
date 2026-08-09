@@ -1,4 +1,5 @@
 {
+  "title": "Coachline",
   "description": "This web app enhances interview preparation with features like performance tracking, challenging follow-up questions, and adaptive timelines, empowering users to improve their skills effectively.",
   "robots": {
     "index": false
