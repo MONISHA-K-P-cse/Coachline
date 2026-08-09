@@ -291,6 +291,26 @@ Do NOT use JSON.
             "mode": "devils_advocate",
         }
 
+    def generate_simpler_question(self, role: str, previous_question: str, previous_answer: str, week: int, topic: str) -> str:
+        prompt = f"""You are an expert technical interviewer.
+
+Role: {role}
+Week {week} Topic: {topic}
+
+The candidate struggled to answer this question:
+"{previous_question}"
+
+Their weak/incomplete answer was:
+"{previous_answer}"
+
+Since they are struggling with this concept, you need to lower the difficulty.
+Generate ONE simpler, basic follow-up question or revisit a prerequisite concept to help them rebuild their confidence and test their fundamental understanding of this topic.
+
+Do NOT use JSON. Keep the question brief and encouraging.
+"""
+        response = self.client.generate(prompt)
+        return response.strip()
+
     def evaluate_and_generate_next(
         self,
         role: str,
@@ -301,6 +321,7 @@ Do NOT use JSON.
         week: int = 1,
         topic: str = "",
         syllabus: list = None,
+        history: list = None,
     ):
         """
         Scores the candidate's answer AND produces the next question in a
@@ -399,22 +420,88 @@ Rules for "next_question" and "mode":
             "devils_advocate" if result["overall_score"] >= DEVILS_ADVOCATE_SCORE_THRESHOLD else "standard"
         )
 
-        # Override standard next questions to strictly follow the weekly syllabus sequence
+        # Override standard next questions to implement Adaptive Difficulty Syllabus sequencing
         if mode == "standard":
             q_list = get_syllabus_questions(role, week)
             current_q_lower = question.lower()
+            difficulty_tier = "Standard"
+
+            # Check if current question matches any main syllabus question
+            current_syllabus_idx = -1
             if q_list[0].lower() in current_q_lower:
-                next_question = q_list[1]
+                current_syllabus_idx = 0
             elif q_list[1].lower() in current_q_lower:
-                next_question = q_list[2]
+                current_syllabus_idx = 1
             elif q_list[2].lower() in current_q_lower:
-                next_question = "Thank you! We have completed all the questions for this week's syllabus. I will now compile your overall performance score."
+                current_syllabus_idx = 2
+
+            if current_syllabus_idx != -1:
+                # Candidate just answered a main syllabus question
+                if current_syllabus_idx == 0:  # Beginner
+                    if result["overall_score"] >= 70.0:
+                        next_question = q_list[1]
+                        difficulty_tier = "Medium"
+                    else:
+                        next_question = self.generate_simpler_question(role, question, answer, week, topic or role)
+                        difficulty_tier = "Beginner (Follow-up)"
+                elif current_syllabus_idx == 1:  # Medium
+                    if result["overall_score"] >= 70.0:
+                        next_question = q_list[2]
+                        difficulty_tier = "Hard"
+                    else:
+                        next_question = self.generate_simpler_question(role, question, answer, week, topic or role)
+                        difficulty_tier = "Medium (Follow-up)"
+                else:  # Hard (q_list[2])
+                    next_question = "Thank you! We have completed all the questions for this week's syllabus. I will now compile your overall performance score."
+                    difficulty_tier = "Completed"
             else:
-                next_question = q_list[0]
+                # Candidate just answered a dynamic simpler follow-up / remedial question
+                parent_syllabus_idx = -1
+                for h in reversed(history or []):
+                    q_text = h["question"].lower()
+                    if q_list[0].lower() in q_text:
+                        parent_syllabus_idx = 0
+                        break
+                    elif q_list[1].lower() in q_text:
+                        parent_syllabus_idx = 1
+                        break
+                    elif q_list[2].lower() in q_text:
+                        parent_syllabus_idx = 2
+                        break
+                
+                # Check how many questions have been asked in total so far
+                total_turns = len(history or [])
+                if total_turns >= 4:
+                    # Conclude the interview if it is running too long
+                    next_question = "Thank you! We have completed all the questions for this week's syllabus. I will now compile your overall performance score."
+                    difficulty_tier = "Completed"
+                elif parent_syllabus_idx == 0:
+                    if result["overall_score"] >= 70.0:
+                        # Candidate showed improvement! Progress to Medium
+                        next_question = q_list[1]
+                        difficulty_tier = "Medium"
+                    else:
+                        # Candidate still struggles, ask another simpler question or conclude if turn limit reached
+                        next_question = self.generate_simpler_question(role, question, answer, week, topic or role)
+                        difficulty_tier = "Beginner (Remedial)"
+                elif parent_syllabus_idx == 1:
+                    if result["overall_score"] >= 70.0:
+                        # Candidate improved! Progress to Hard
+                        next_question = q_list[2]
+                        difficulty_tier = "Hard"
+                    else:
+                        next_question = self.generate_simpler_question(role, question, answer, week, topic or role)
+                        difficulty_tier = "Medium (Remedial)"
+                else:
+                    # Fallback to beginner
+                    next_question = q_list[0]
+                    difficulty_tier = "Beginner"
+        else:
+            difficulty_tier = "Devil's Advocate"
 
         return result, {
             "role": role,
-            "difficulty": "Devil's Advocate" if mode == "devils_advocate" else None,
+            "difficulty": difficulty_tier,
             "question": next_question,
             "mode": mode,
         }

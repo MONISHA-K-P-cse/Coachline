@@ -161,10 +161,15 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                 # the previous two-call path if the combined output can't be
                 # parsed, so a single bad generation can't cost reliability.
                 try:
+                    qa_history = db.query(QuestionAnswer).filter(
+                        QuestionAnswer.session_id == session.id
+                    ).order_by(QuestionAnswer.turn_number.asc()).all()
+                    history_list = [{"question": qa.question, "score": qa.score} for qa in qa_history]
+
                     eval_result, next_q = await run_in_threadpool(
                         interview_agent.evaluate_and_generate_next,
                         session.role, question_text, user_answer, experience_level, candidate_background,
-                        session.week, session.topic, week_syllabus
+                        session.week, session.topic, week_syllabus, history_list
                     )
                 except Exception as exc:
                     logger.warning(

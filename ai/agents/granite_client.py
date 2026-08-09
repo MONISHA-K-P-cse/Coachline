@@ -1067,6 +1067,10 @@ class GraniteClient:
                 "next_question": next_q
             })
 
+        # 6b. InterviewAgent - Simpler / Prerequisite Question
+        elif "lower the difficulty" in prompt_lower or "simpler" in prompt_lower:
+            return "Since we are adjusting the difficulty, let's look at the basic foundations. Can you explain the fundamental concept behind this topic in your own words?"
+
         # 7. InterviewAgent - Devil's Advocate
         elif "devil's advocate" in prompt_lower:
             role = "Backend Engineer"
