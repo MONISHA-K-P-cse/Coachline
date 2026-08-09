@@ -6,6 +6,7 @@ from backend.models.roadmap import Roadmap, Note
 from backend.models.interview import InterviewSession, QuestionAnswer
 from backend.models.mastery import TopicMastery
 from backend.models.mentor import CareerMentorMessage
+from backend.models.bob import BobChallengeResult
 
 __all__ = [
     "Base",
@@ -19,4 +20,5 @@ __all__ = [
     "QuestionAnswer",
     "TopicMastery",
     "CareerMentorMessage",
+    "BobChallengeResult",
 ]

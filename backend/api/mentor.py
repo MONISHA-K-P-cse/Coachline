@@ -34,10 +34,59 @@ async def chat_with_mentor(
     db.commit()
 
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
-    target_role = profile.target_role if profile else ""
+    target_role = profile.target_role if profile else "Software Engineer"
+    experience_level = profile.experience_level if profile else "Junior"
+
+    # Extract resume parsed text skills
+    resume_skills = ""
+    if current_user.resumes:
+        latest_res = current_user.resumes[-1]
+        resume_skills = latest_res.parsed_text[:600] if latest_res.parsed_text else ""
+
+    # Extract interview strengths & weaknesses
+    weak_topics = []
+    strong_topics = []
+    if current_user.interviews:
+        latest_int = current_user.interviews[-1]
+        meta = latest_int.metadata_json or {}
+        weak_topics = meta.get("weak_topics", [])
+        strong_topics = meta.get("strong_topics", [])
+
+    # Extract active roadmap steps summary
+    roadmap_status = ""
+    if current_user.roadmaps:
+        latest_rm = current_user.roadmaps[-1]
+        steps_data = latest_rm.steps_json or {}
+        steps = steps_data.get("steps", [])
+        completed = sum(1 for s in steps if s.get("status") == "completed")
+        total = len(steps)
+        roadmap_status = f"Roadmap '{latest_rm.title}': {completed}/{total} steps completed."
+
+    # Extract mastery competencies list
+    mastery_summary = ""
+    if current_user.mastery_scores:
+        scores = [f"{m.topic}: {int(m.mastery_score)}%" for m in current_user.mastery_scores]
+        mastery_summary = ", ".join(scores)
+
+    # Extract Bob challenge results summary
+    bob_results_summary = ""
+    if current_user.bob_results:
+        results = [f"{r.challenge_id} (Score: {r.score}/100)" for r in current_user.bob_results]
+        bob_results_summary = ", ".join(results)
 
     try:
-        mentor_reply_text = await run_in_threadpool(mentor_agent.chat, msg_in.message, target_role)
+        mentor_reply_text = await run_in_threadpool(
+            mentor_agent.chat,
+            msg_in.message,
+            target_role=target_role,
+            experience_level=experience_level,
+            resume_skills=resume_skills,
+            weak_topics=weak_topics,
+            strong_topics=strong_topics,
+            roadmap_status=roadmap_status,
+            mastery_summary=mastery_summary,
+            bob_results_summary=bob_results_summary
+        )
     except Exception as exc:
         logger.warning("Mentor agent call failed (%s); AI mentor is unavailable.", exc)
         raise HTTPException(

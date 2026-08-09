@@ -144,6 +144,7 @@ export default function Workspace({ navigate }: Props) {
   const [bobCode, setBobCode] = useState('def get_user_data(username):\n    query = f"SELECT * FROM users WHERE username = \'{username}\'"\n    return db.execute(query)')
   const [bobAuditing, setBobAuditing] = useState(false)
   const [bobAuditResult, setBobAuditResult] = useState<api.BobAuditResponse | null>(null)
+  const [bobRec, setBobRec] = useState<api.BobRecommendationResponse | null>(null)
 
   useEffect(() => {
     if (bobChallengeId === 'sql_injection') {
@@ -172,16 +173,21 @@ export default function Workspace({ navigate }: Props) {
   }
 
   const loadAll = useCallback(async () => {
-    const [d, r, s, tm] = await Promise.all([
+    const [d, r, s, tm, rec] = await Promise.all([
       api.getDashboard(),
       api.listResumes(),
       api.listInterviewSessions(),
       api.getTopicMastery(),
+      api.getBobRecommendation().catch(() => null),
     ])
     setDashboard(d)
     setResumes(r)
     setSessions(s)
     setTopicMastery(tm)
+    if (rec) {
+      setBobRec(rec)
+      setBobChallengeId(rec.challenge_id)
+    }
   }, [])
 
   useEffect(() => {
@@ -738,10 +744,19 @@ export default function Workspace({ navigate }: Props) {
             <div className="flex flex-col gap-6">
               
               {/* Select Security loop config */}
-              <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel">
-                <span className="text-[10px] font-bold tracking-wider uppercase text-text-muted">Auditing Loop</span>
-                <h3 className="font-display text-base font-bold text-text mt-1.5">Select Vulnerability</h3>
-                <div className="mt-4">
+              <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel flex flex-col gap-3">
+                <div>
+                  <span className="text-[10px] font-bold tracking-wider uppercase text-text-muted">Auditing Loop</span>
+                  <h3 className="font-display text-base font-bold text-text mt-1.5">Select Vulnerability</h3>
+                </div>
+                
+                {bobRec && (
+                  <div className="p-3.5 rounded-xl border border-rust/20 bg-rust/5 text-xs text-text leading-relaxed font-semibold">
+                    💡 <span className="text-rust">Bob's Recommendation:</span> {bobRec.reason}
+                  </div>
+                )}
+
+                <div className="mt-1">
                   <select
                     value={bobChallengeId}
                     onChange={(e) => setBobChallengeId(e.target.value)}

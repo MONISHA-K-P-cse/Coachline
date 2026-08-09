@@ -453,3 +453,13 @@ export function auditCode(code: string, challengeId: string, language: string = 
     body: JSON.stringify({ code, challenge_id: challengeId, language })
   }, AGENT_TIMEOUT_MS)
 }
+
+export interface BobRecommendationResponse {
+  challenge_id: string
+  topic: string
+  reason: string
+}
+
+export function getBobRecommendation(): Promise<BobRecommendationResponse> {
+  return request('/bob/recommendation')
+}
