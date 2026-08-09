@@ -728,6 +728,7 @@ export default function Interview({ navigate }: Props) {
                     </div>
                   ))}
                 </div>
+              </div>
             </div>
 
             {/* Bento Grid for Extra Stats */}
