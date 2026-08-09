@@ -186,15 +186,15 @@ export default function Roadmap({ navigate }: Props) {
         ) : (
           <>
             {/* Timeline Progress Bar */}
-            <div className="p-5 rounded-2xl border border-border bg-card-bg/60 glass-panel flex items-center justify-between gap-6 mb-10">
+            <div className="p-5 rounded-2xl border border-border/80 bg-card-bg/80 glass-panel flex items-center justify-between gap-6 mb-10 shadow-xs">
               <div className="flex-1">
                 <div className="flex justify-between text-xs font-bold text-text mb-2">
                   <span>Overall Progression</span>
-                  <span className="text-rust">{completionPercentage}% Completed</span>
+                  <span className="text-rust font-bold">{completionPercentage}% Completed</span>
                 </div>
-                <div className="w-full h-2 rounded-full bg-border/40 overflow-hidden">
+                <div className="w-full h-2.5 rounded-full bg-border/40 overflow-hidden p-0.5">
                   <div 
-                    className="h-full bg-rust transition-all duration-500" 
+                    className="h-full rounded-full bg-gradient-to-r from-rust via-rust to-accent transition-all duration-500 shadow-xs" 
                     style={{ width: `${completionPercentage}%` }} 
                   />
                 </div>

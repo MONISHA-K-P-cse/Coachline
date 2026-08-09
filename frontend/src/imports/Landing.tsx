@@ -211,16 +211,16 @@ export default function Landing({ navigate }: LandingProps) {
           >
             <button
               onClick={() => navigate(user ? 'workspace' : 'register')}
-              className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-semibold text-white bg-rust hover:bg-rust/90 shadow-md shadow-rust/15 hover:shadow-lg transition-all duration-150 cursor-pointer flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-semibold text-white bg-rust hover:bg-rust/90 shadow-md shadow-rust/20 hover:shadow-lg hover:shadow-rust/30 transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 active:scale-[0.99]"
             >
               <span>Start Interview Journey</span>
               <ArrowRight className="w-4 h-4" />
             </button>
             <button
               onClick={() => setShowDemoModal(true)}
-              className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-semibold text-text-muted border border-border bg-card-bg/60 hover:bg-border/20 hover:text-text transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-semibold text-text-muted border border-border/80 bg-card-bg/60 hover:bg-border/30 hover:text-text transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-[0.99]"
             >
-              <Play className="w-4 h-4" />
+              <Play className="w-4 h-4 text-rust" />
               <span>Interactive Demo</span>
             </button>
           </motion.div>
@@ -244,9 +244,9 @@ export default function Landing({ navigate }: LandingProps) {
                 <motion.div
                   key={idx}
                   whileHover={{ y: -4 }}
-                  className={`p-6 rounded-2xl border border-border bg-card-bg/80 glass-panel ${feat.size} flex flex-col justify-between min-h-[180px] transition-all`}
+                  className={`p-6 rounded-2xl border border-border/80 bg-card-bg/80 glass-panel glass-panel-hover ${feat.size} flex flex-col justify-between min-h-[180px] transition-all`}
                 >
-                  <div className="p-3 w-fit rounded-xl bg-rust/10 text-rust">
+                  <div className="p-3 w-fit rounded-xl bg-rust/10 text-rust shadow-xs">
                     <Icon className="w-5 h-5" />
                   </div>
                   <div>

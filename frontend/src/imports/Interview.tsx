@@ -430,13 +430,13 @@ export default function Interview({ navigate }: Props) {
                 <input
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-bg/50 text-xs font-semibold text-text focus:outline-none focus:border-rust/80 transition-colors"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-border/70 bg-bg/50 text-xs font-semibold text-text focus:outline-none focus:border-rust/80 focus:ring-3 focus:ring-rust/15 transition-all"
                 />
               </div>
 
               <button
                 onClick={connectAndStart}
-                className="mt-6 px-6 py-3 bg-rust hover:bg-rust/90 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-rust/15 flex items-center gap-1.5 cursor-pointer"
+                className="mt-6 px-6 py-3 bg-rust hover:bg-rust/90 text-white rounded-xl text-xs font-bold transition-all duration-200 shadow-md shadow-rust/20 hover:shadow-lg hover:shadow-rust/30 flex items-center gap-2 cursor-pointer active:scale-[0.98]"
               >
                 <span>Launch Agent Session</span>
                 <ArrowRight className="w-4 h-4" />

@@ -530,19 +530,19 @@ export default function Mentor({ navigate }: Props) {
           {/* Chat Form prompt inputs */}
           <form 
             onSubmit={handleSend}
-            className="p-4 border-t border-border bg-panel-bg/30 flex items-center gap-3.5"
+            className="p-4 border-t border-border/80 bg-panel-bg/40 flex items-center gap-3.5"
           >
             <input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Ask for guidance on STAR method or CS fundamentals..."
-              className="flex-1 px-4 py-3 rounded-xl border border-border bg-bg/50 text-xs sm:text-sm focus:outline-none focus:border-rust/80 transition-colors"
+              className="flex-1 px-4 py-3 rounded-xl border border-border/70 bg-bg/50 text-xs sm:text-sm focus:outline-none focus:border-rust/80 focus:ring-3 focus:ring-rust/15 transition-all placeholder:text-text-muted/40"
             />
             <button
               type="submit"
               disabled={!inputValue.trim() || thinking}
-              className={`p-3 rounded-xl text-white transition-colors cursor-pointer ${
-                !inputValue.trim() || thinking ? 'bg-rust/50 cursor-not-allowed' : 'bg-rust hover:bg-rust/95 shadow-sm'
+              className={`p-3 rounded-xl text-white transition-all duration-200 cursor-pointer ${
+                !inputValue.trim() || thinking ? 'bg-rust/50 cursor-not-allowed' : 'bg-rust hover:bg-rust/90 shadow-md shadow-rust/20 hover:shadow-lg active:scale-[0.98]'
               }`}
             >
               <Send className="w-4 h-4" />

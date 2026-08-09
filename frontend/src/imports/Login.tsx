@@ -46,7 +46,7 @@ export default function Login({ navigate }: Props) {
           {/* Form Card */}
           <form 
             onSubmit={handleSubmit} 
-            className="p-8 rounded-2xl border border-border bg-card-bg/85 backdrop-blur-md shadow-xl flex flex-col gap-5 glass-panel"
+            className="p-8 rounded-2xl border border-border/80 bg-card-bg/90 backdrop-blur-xl shadow-lg flex flex-col gap-5 glass-panel"
           >
             {/* Email field */}
             <div className="flex flex-col gap-1.5">
@@ -54,14 +54,14 @@ export default function Login({ navigate }: Props) {
                 Email Address
               </label>
               <div className="relative flex items-center">
-                <Mail className="w-4 h-4 text-text-muted/60 absolute left-3.5" />
+                <Mail className="w-4 h-4 text-text-muted/70 absolute left-3.5 pointer-events-none" />
                 <input
                   id="email"
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-bg/50 text-sm focus:outline-none focus:border-rust/60 transition-colors"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border/70 bg-bg/50 text-sm focus:outline-none focus:border-rust/80 focus:ring-3 focus:ring-rust/15 transition-all placeholder:text-text-muted/40"
                   placeholder="name@example.com"
                 />
               </div>
@@ -73,14 +73,14 @@ export default function Login({ navigate }: Props) {
                 Password
               </label>
               <div className="relative flex items-center">
-                <KeyRound className="w-4 h-4 text-text-muted/60 absolute left-3.5" />
+                <KeyRound className="w-4 h-4 text-text-muted/70 absolute left-3.5 pointer-events-none" />
                 <input
                   id="password"
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-bg/50 text-sm focus:outline-none focus:border-rust/60 transition-colors"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border/70 bg-bg/50 text-sm focus:outline-none focus:border-rust/80 focus:ring-3 focus:ring-rust/15 transition-all placeholder:text-text-muted/40"
                   placeholder="••••••••"
                 />
               </div>
@@ -97,10 +97,10 @@ export default function Login({ navigate }: Props) {
             <button
               type="submit"
               disabled={submitting}
-              className={`w-full py-3 rounded-xl text-white font-semibold text-sm transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`w-full py-3 rounded-xl text-white font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
                 submitting 
                   ? 'bg-rust/60 cursor-not-allowed' 
-                  : 'bg-rust hover:bg-rust/90 shadow-md shadow-rust/15 hover:shadow-lg'
+                  : 'bg-rust hover:bg-rust/90 shadow-md shadow-rust/20 hover:shadow-lg hover:shadow-rust/30 active:scale-[0.99]'
               }`}
             >
               {submitting ? (

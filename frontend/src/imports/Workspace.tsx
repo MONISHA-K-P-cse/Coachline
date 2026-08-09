@@ -322,7 +322,7 @@ export default function Workspace({ navigate }: Props) {
           </div>
 
           {/* Sub Navigation Tabs */}
-          <div className="flex bg-panel-bg p-1 rounded-xl border border-border/80 w-fit self-start">
+          <div className="flex bg-panel-bg/70 p-1.5 rounded-xl border border-border/70 w-fit self-start shadow-inner">
             {[
               { id: 'dashboard', label: 'Bento Dashboard', icon: TrendingUp },
               { id: 'resume', label: 'Resume Intelligence', icon: FileText },
@@ -333,10 +333,10 @@ export default function Workspace({ navigate }: Props) {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all duration-200 cursor-pointer ${
                     activeTab === tab.id
-                      ? 'bg-card-bg text-rust shadow-sm'
-                      : 'text-text-muted hover:text-text'
+                      ? 'bg-card-bg text-rust shadow-xs font-bold border border-border/40'
+                      : 'text-text-muted hover:text-text hover:bg-border/20'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -355,7 +355,7 @@ export default function Workspace({ navigate }: Props) {
             <div className="md:col-span-2 flex flex-col gap-6">
               
               {/* Overall Readiness Bento Card */}
-              <div className="p-6 rounded-2xl border border-border bg-card-bg/60 glass-panel flex flex-col sm:flex-row items-center justify-between gap-6">
+              <div className="p-6 rounded-2xl border border-border/80 bg-card-bg/80 glass-panel flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div>
                   <span className="text-[10px] font-bold tracking-wider uppercase text-text-muted">Target Readiness</span>
                   <h2 className="font-display text-xl font-bold text-text mt-1.5">Your Readiness Rating</h2>
@@ -365,13 +365,13 @@ export default function Workspace({ navigate }: Props) {
                   <div className="flex items-center gap-4 mt-6">
                     <button
                       onClick={() => navigate('interview')}
-                      className="px-4 py-2 text-xs font-semibold text-white bg-rust hover:bg-rust/90 rounded-lg transition-colors cursor-pointer"
+                      className="px-4.5 py-2.5 text-xs font-semibold text-white bg-rust hover:bg-rust/90 shadow-sm shadow-rust/15 hover:shadow-md hover:shadow-rust/25 rounded-xl transition-all duration-200 cursor-pointer active:scale-[0.98]"
                     >
                       Conduct Simulation
                     </button>
                     <button
                       onClick={() => setActiveTab('resume')}
-                      className="px-4 py-2 text-xs font-semibold text-text border border-border bg-bg/40 hover:bg-border/20 rounded-lg transition-colors cursor-pointer"
+                      className="px-4.5 py-2.5 text-xs font-semibold text-text border border-border/80 bg-bg/40 hover:bg-border/30 rounded-xl transition-all duration-200 cursor-pointer active:scale-[0.98]"
                     >
                       Audit Resume
                     </button>

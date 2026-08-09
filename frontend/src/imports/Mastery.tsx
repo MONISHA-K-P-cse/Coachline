@@ -153,11 +153,11 @@ export default function Mastery({ navigate }: Props) {
         </div>
 
         {/* Status Legend indicator bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border border-border bg-card-bg/60 glass-panel mb-6 select-none">
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl border border-border/80 bg-card-bg/80 glass-panel mb-6 select-none shadow-xs">
           <div className="flex items-center gap-4">
             {(Object.entries(STATUS) as [NodeStatus, typeof STATUS[NodeStatus]][]).map(([key, item]) => (
               <div key={key} className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.fill }} />
+                <div className="w-2.5 h-2.5 rounded-full shadow-xs" style={{ backgroundColor: item.fill }} />
                 <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">{item.label}</span>
               </div>
             ))}

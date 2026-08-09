@@ -182,10 +182,10 @@ export default function BobCoach({ navigate }: Props) {
                         key={lang}
                         type="button"
                         onClick={() => setSelectedLanguage(lang)}
-                        className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 cursor-pointer ${
                           selectedLanguage === lang
-                            ? 'bg-rust border-rust text-white shadow-sm shadow-rust/10'
-                            : 'border-border/60 bg-bg/40 text-text-muted hover:text-text hover:border-rust/40'
+                            ? 'bg-rust border-rust text-white shadow-xs shadow-rust/20 font-bold'
+                            : 'border-border/60 bg-bg/40 text-text-muted hover:text-text hover:border-rust/40 hover:bg-bg/70'
                         }`}
                       >
                         {lang}
@@ -198,7 +198,7 @@ export default function BobCoach({ navigate }: Props) {
                   <button
                     onClick={() => handleStart()}
                     disabled={starting}
-                    className="w-full sm:w-auto px-6 py-3 rounded-xl bg-rust hover:bg-rust/90 text-white font-semibold text-xs transition-all shadow-md shadow-rust/10 flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full sm:w-auto px-6 py-3 rounded-xl bg-rust hover:bg-rust/90 text-white font-semibold text-xs transition-all duration-200 shadow-md shadow-rust/20 hover:shadow-lg hover:shadow-rust/30 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                   >
                     {starting ? (
                       <>

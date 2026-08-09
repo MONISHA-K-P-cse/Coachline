@@ -243,13 +243,13 @@ export default function Notes({ navigate }: Props) {
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="Topic e.g. Cache Invalidations"
-                className="w-full px-3 py-2 rounded-xl border border-border bg-bg/50 text-xs focus:outline-none focus:border-rust/60 transition-colors"
+                className="w-full px-3.5 py-2 rounded-xl border border-border/70 bg-bg/50 text-xs focus:outline-none focus:border-rust/80 focus:ring-3 focus:ring-rust/15 transition-all placeholder:text-text-muted/40"
               />
               <button
                 type="submit"
                 disabled={generating || !topic.trim()}
-                className={`w-full py-2 rounded-xl text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  generating || !topic.trim() ? 'bg-rust/50 cursor-not-allowed' : 'bg-rust hover:bg-rust/90'
+                className={`w-full py-2 rounded-xl text-white text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
+                  generating || !topic.trim() ? 'bg-rust/50 cursor-not-allowed' : 'bg-rust hover:bg-rust/90 shadow-sm shadow-rust/15 hover:shadow-md hover:shadow-rust/25 active:scale-[0.98]'
                 }`}
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -279,12 +279,12 @@ export default function Notes({ navigate }: Props) {
           {/* Search bar & filter chips */}
           <div className="px-4 py-3 border-b border-border/60 flex flex-col gap-3.5">
             <div className="relative flex items-center">
-              <Search className="w-3.5 h-3.5 text-text-muted absolute left-3" />
+              <Search className="w-3.5 h-3.5 text-text-muted/70 absolute left-3 pointer-events-none" />
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search study cards..."
-                className="w-full pl-9 pr-4 py-1.5 rounded-lg border border-border/60 bg-bg/40 text-xs focus:outline-none"
+                className="w-full pl-9 pr-4 py-1.5 rounded-lg border border-border/70 bg-bg/40 text-xs focus:outline-none focus:border-rust/80 focus:ring-2 focus:ring-rust/10 transition-all placeholder:text-text-muted/40"
               />
             </div>
 

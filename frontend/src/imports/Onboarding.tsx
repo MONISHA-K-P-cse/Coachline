@@ -99,7 +99,7 @@ export default function Onboarding({ navigate }: Props) {
                     value={targetRole}
                     onChange={(e) => setTargetRole(e.target.value)}
                     placeholder="e.g. Backend Engineer"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-bg/50 text-sm focus:outline-none focus:border-rust/60 transition-colors"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border/70 bg-bg/50 text-sm focus:outline-none focus:border-rust/80 focus:ring-3 focus:ring-rust/15 transition-all placeholder:text-text-muted/40"
                   />
                 </div>
               </div>
@@ -109,14 +109,14 @@ export default function Onboarding({ navigate }: Props) {
                   Target Company
                 </label>
                 <div className="relative flex items-center">
-                  <Star className="w-4 h-4 text-text-muted/60 absolute left-3.5" />
+                  <Star className="w-4 h-4 text-text-muted/70 absolute left-3.5 pointer-events-none" />
                   <input
                     type="text"
                     required
                     value={targetCompany}
                     onChange={(e) => setTargetCompany(e.target.value)}
                     placeholder="e.g. Stripe"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-bg/50 text-sm focus:outline-none focus:border-rust/60 transition-colors"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border/70 bg-bg/50 text-sm focus:outline-none focus:border-rust/80 focus:ring-3 focus:ring-rust/15 transition-all placeholder:text-text-muted/40"
                   />
                 </div>
               </div>
@@ -135,10 +135,10 @@ export default function Onboarding({ navigate }: Props) {
                       key={level}
                       type="button"
                       onClick={() => setExperienceLevel(level)}
-                      className={`py-2 px-3 rounded-xl border text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+                      className={`py-2 px-3 rounded-xl border text-xs font-semibold tracking-wide transition-all duration-200 cursor-pointer ${
                         isSelected 
-                          ? 'border-rust bg-rust/10 text-rust shadow-sm shadow-rust/5' 
-                          : 'border-border bg-bg/40 text-text-muted hover:border-border/80 hover:text-text'
+                          ? 'border-rust bg-rust/10 text-rust shadow-xs shadow-rust/10 font-bold' 
+                          : 'border-border/60 bg-bg/40 text-text-muted hover:border-border hover:text-text hover:bg-bg/70'
                       }`}
                     >
                       {level}
@@ -154,13 +154,14 @@ export default function Onboarding({ navigate }: Props) {
                 Target Interview Date
               </label>
               <div className="relative flex items-center">
-                <Calendar className="w-4 h-4 text-text-muted/60 absolute left-3.5 pointer-events-none" />
+                <Calendar className="w-4 h-4 text-text-muted/70 absolute left-3.5 pointer-events-none" />
                 <input
                   type="date"
                   required
+                  min={new Date().toISOString().split('T')[0]}
                   value={interviewDate}
                   onChange={(e) => setInterviewDate(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-bg/50 text-sm focus:outline-none focus:border-rust/60 transition-colors"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border/70 bg-bg/50 text-sm focus:outline-none focus:border-rust/80 focus:ring-3 focus:ring-rust/15 transition-all"
                 />
               </div>
             </div>
@@ -179,13 +180,13 @@ export default function Onboarding({ navigate }: Props) {
                       key={style.value}
                       type="button"
                       onClick={() => setLearningStyle(style.value)}
-                      className={`flex items-start gap-3.5 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      className={`flex items-start gap-3.5 p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer ${
                         isSelected 
-                          ? 'border-rust bg-rust/5 text-rust' 
-                          : 'border-border bg-bg/40 text-text-muted hover:border-border/80 hover:text-text'
+                          ? 'border-rust/80 bg-rust/5 text-rust shadow-xs shadow-rust/5' 
+                          : 'border-border/60 bg-bg/40 text-text-muted hover:border-border hover:text-text hover:bg-bg/70'
                       }`}
                     >
-                      <div className={`p-2 rounded-lg mt-0.5 ${isSelected ? 'bg-rust/15 text-rust' : 'bg-border/40 text-text-muted/80'}`}>
+                      <div className={`p-2 rounded-lg mt-0.5 transition-colors ${isSelected ? 'bg-rust/15 text-rust' : 'bg-border/40 text-text-muted/80'}`}>
                         <StyleIcon className="w-4 h-4" />
                       </div>
                       <div>
@@ -209,10 +210,10 @@ export default function Onboarding({ navigate }: Props) {
             <button
               type="submit"
               disabled={submitting}
-              className={`w-full py-3 rounded-xl text-white font-semibold text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`w-full py-3 rounded-xl text-white font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
                 submitting 
                   ? 'bg-rust/60 cursor-not-allowed' 
-                  : 'bg-rust hover:bg-rust/90 shadow-md shadow-rust/15 hover:shadow-lg'
+                  : 'bg-rust hover:bg-rust/90 shadow-md shadow-rust/20 hover:shadow-lg hover:shadow-rust/30 active:scale-[0.99]'
               }`}
             >
               {submitting ? (
