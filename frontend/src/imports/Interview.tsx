@@ -24,6 +24,9 @@ interface EvalPayload {
   next_question: string
   difficulty: string
   mode: 'standard' | 'devils_advocate'
+  previous_technical_score?: number
+  points_earned?: number
+  updated_technical_score?: number
 }
 
 export default function Interview({ navigate }: Props) {
@@ -35,7 +38,15 @@ export default function Interview({ navigate }: Props) {
   const [answer, setAnswer] = useState('')
   const [turnNumber, setTurnNumber] = useState(1)
   const [feedback, setFeedback] = useState<EvalPayload | null>(null)
-  const [ended, setEnded] = useState<{ average_score: number; scores_breakdown: EvalPayload['scores_breakdown'] } | null>(null)
+  const [ended, setEnded] = useState<{
+    average_score: number;
+    scores_breakdown: EvalPayload['scores_breakdown'];
+    difficulty_reached?: string;
+    weak_topics?: string[];
+    strong_topics?: string[];
+    topic_wise_scores?: Record<string, number>;
+    study_plan?: string;
+  } | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [slowWait, setSlowWait] = useState(false)
   const [unlockedNextWeek, setUnlockedNextWeek] = useState(false)
@@ -646,6 +657,36 @@ export default function Interview({ navigate }: Props) {
                 </div>
               ))}
             </div>
+
+            {/* Cumulative Technical Score Telemetry */}
+            {feedback.previous_technical_score !== undefined && (
+              <div className="p-5 rounded-2xl border border-rust/15 bg-rust/5 flex items-center justify-around gap-6 text-center">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Previous Technical Score</span>
+                  <span className="font-mono text-base font-bold text-text">
+                    {Math.round(feedback.previous_technical_score)}%
+                  </span>
+                </div>
+                
+                <div className="h-8 w-px bg-rust/10" />
+
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-rust">Points Earned</span>
+                  <span className="font-mono text-base font-bold text-rust">
+                    {feedback.points_earned && feedback.points_earned >= 0 ? `+${feedback.points_earned}` : feedback.points_earned}
+                  </span>
+                </div>
+
+                <div className="h-8 w-px bg-rust/10" />
+
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Updated Technical Score</span>
+                  <span className="font-mono text-base font-bold text-text">
+                    {Math.round(feedback.updated_technical_score || 50)}%
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Actions for next step */}
             <div className="flex items-center justify-between border-t border-border pt-6 mt-4">

@@ -295,24 +295,27 @@ The candidate was just asked:
 The candidate answered:
 "{answer}"
 
-Evaluate their answer based on:
-1. Technical correctness
-2. Completeness
-3. Communication clarity
-4. Confidence
-5. Response time (response was completed in {duration_seconds} seconds)
-6. Follow-up quality (relevance to the prompt)
+Evaluate their answer based on this strict scoring rubric out of 100 total points:
+1. Technical correctness (score from 0 to 40)
+2. Depth of explanation (score from 0 to 20)
+3. Accuracy (score from 0 to 15)
+4. Examples and use cases (score from 0 to 10)
+5. Communication clarity (score from 0 to 10)
+6. Confidence (score from 0 to 5)
+
+The sum of these 6 components must equal the overall_score.
+Base the technical_score primarily on technical correctness, depth, and accuracy (sum of rubrics 1, 2, and 3).
 
 Respond with STRICT JSON ONLY. No prose, no markdown code fences, no commentary before or after the JSON object.
 
 The JSON object MUST match exactly this schema:
 {{
-  "technical_score": <number 0-100>,
+  "technical_score": <number 0-100, the sum of technical correctness, depth, and accuracy>,
   "communication_score": <number 0-100>,
   "behavioral_score": <number 0-100>,
   "confidence_score": <number 0-100>,
   "star_score": <number 0-100>,
-  "overall_score": <number 0-100, weighted overall impression>,
+  "overall_score": <number 0-100, the sum of the 6 rubric component scores above>,
   "feedback": <string, detailed strengths and weaknesses of the answer>,
   "weak_topics": [<string>, ...],
   "strong_topics": [<string>, ...],
@@ -395,22 +398,38 @@ The JSON object MUST match exactly this schema:
                 if t_lower in st.lower():
                     meta["live_skill_scores"][topic_key] = min(100.0, meta["live_skill_scores"][topic_key] + 2.0)
 
-        # Update current difficulty
-        DIFFICULTY_LEVELS = ["Easy", "Medium", "Hard", "Expert"]
-        curr_idx = DIFFICULTY_LEVELS.index(meta["current_difficulty"])
+        # Update technical cumulative score
+        prev_technical = meta.get("cumulative_technical_score", 50.0)
+        tech_delta = int(round((result["technical_score"] - 70.0) * 0.6))
         
-        # Difficulty rules
-        if overall_score >= 85.0:
-            curr_idx = min(3, curr_idx + 1)
-        elif overall_score < 50.0:
-            curr_idx = max(0, curr_idx - 1)
+        # Never keep the score constant if their performance is good/improving
+        if result["technical_score"] >= 70.0 and tech_delta <= 0:
+            tech_delta = 1
             
-        meta["current_difficulty"] = DIFFICULTY_LEVELS[curr_idx]
+        new_technical = max(0.0, min(100.0, prev_technical + tech_delta))
+        meta["cumulative_technical_score"] = new_technical
+        result["points_earned"] = tech_delta
+        result["previous_technical_score"] = prev_technical
+        result["updated_technical_score"] = new_technical
+
+        # Update current difficulty based on cumulative technical score
+        if new_technical >= 85.0:
+            difficulty_tier = "Expert"
+        elif new_technical >= 70.0:
+            difficulty_tier = "Hard"
+        elif new_technical >= 50.0:
+            difficulty_tier = "Medium"
+        else:
+            difficulty_tier = "Easy"
+            
+        meta["current_difficulty"] = difficulty_tier
         
         # Update difficulty reached
+        DIFFICULTY_LEVELS = ["Easy", "Medium", "Hard", "Expert"]
+        curr_idx = DIFFICULTY_LEVELS.index(difficulty_tier)
         highest_reached_idx = DIFFICULTY_LEVELS.index(meta["difficulty_reached"])
         if curr_idx > highest_reached_idx:
-            meta["difficulty_reached"] = DIFFICULTY_LEVELS[curr_idx]
+            meta["difficulty_reached"] = difficulty_tier
 
         # Determine next question path
         next_question = ""

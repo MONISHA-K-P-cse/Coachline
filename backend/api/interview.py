@@ -100,6 +100,7 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                     "weak_topics": [],
                     "strong_topics": [],
                     "questions_asked": [],
+                    "cumulative_technical_score": 50.0,
                     "live_skill_scores": {
                         "DSA": 50.0,
                         "DBMS": 50.0,
@@ -118,6 +119,12 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                     user_id=user_id,
                     role=role,
                     status="active",
+                    average_score=50.0,
+                    technical_score=50.0,
+                    communication_score=50.0,
+                    behavioral_score=50.0,
+                    confidence_score=50.0,
+                    star_score=50.0,
                     started_at=datetime.utcnow(),
                     week=week,
                     topic=topic,
@@ -219,6 +226,17 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                 feedback = eval_result["feedback"]
                 weak_topics = eval_result["weak_topics"]
 
+                prev_technical = eval_result.get("previous_technical_score", session.technical_score)
+                points_earned = eval_result.get("points_earned", 0)
+                new_technical = eval_result.get("updated_technical_score", session.technical_score)
+
+                session.technical_score = new_technical
+                session.average_score = max(0.0, min(100.0, session.average_score + round((score - 70.0) * 0.5)))
+                session.communication_score = max(0.0, min(100.0, session.communication_score + round((comm_score - 70.0) * 0.5)))
+                session.behavioral_score = max(0.0, min(100.0, session.behavioral_score + round((behav_score - 70.0) * 0.5)))
+                session.confidence_score = max(0.0, min(100.0, session.confidence_score + round((conf_score - 70.0) * 0.5)))
+                session.star_score = max(0.0, min(100.0, session.star_score + round((star_score - 70.0) * 0.5)))
+
                 if current_qa:
                     current_qa.score = score
                     current_qa.technical_score = tech_score
@@ -228,7 +246,7 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                     current_qa.star_score = star_score
                     current_qa.feedback = feedback
                     current_qa.weak_topics = weak_topics
-                    db.commit()
+                db.commit()
 
                 turn_number += 1
                 next_question = next_q["question"]
@@ -258,6 +276,9 @@ async def interview_websocket(websocket: WebSocket, user_id: int):
                     "next_question": next_question,
                     "difficulty": next_q.get("difficulty"),
                     "mode": next_q.get("mode", "standard"),
+                    "previous_technical_score": prev_technical,
+                    "points_earned": points_earned,
+                    "updated_technical_score": new_technical
                 })
 
                 # Feedback-loop note regeneration runs *after* the candidate
