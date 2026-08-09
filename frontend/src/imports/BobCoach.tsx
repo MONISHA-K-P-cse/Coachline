@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 
 type Page = 'landing' | 'login' | 'register' | 'onboarding' | 'workspace' | 'roadmap' | 'interview' | 'notes' | 'mastery' | 'mentor' | 'bob_coach'
+const MAX_CANDIDATE_TURNS = 3
 interface Props { navigate: (p: Page) => void }
 
 export default function BobCoach({ navigate }: Props) {
